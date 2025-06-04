@@ -30,7 +30,7 @@ jobs:
         with:
           node-version: 20
           registry-url: https://npm.pkg.github.com/
-          # scope: '@chainlift'
+          scope: '@chainlift'
       - run: npm ci
       - run: echo registry=https://npm.pkg.github.com/ >> .npmrc
       - run: npm run build
