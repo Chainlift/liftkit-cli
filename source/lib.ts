@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import jv from 'ajv';
 import meow from 'meow';
-
+import {spawn} from 'child_process';
 export const cli = meow(
 	`
 	Usage
@@ -34,6 +34,46 @@ export const cli = meow(
 		},
 	},
 );
+
+/**
+ * Runs an npx command with the given arguments,
+ * forwarding stdio and exiting this process with the child's exit code.
+ *
+ * @param args - Array of arguments to pass to npx (e.g., ['create-react-app', 'my-app'])
+ */
+export async function runNpxAndExit(args: string[]): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const child = spawn('npx', args, {
+			stdio: 'inherit',
+			shell: true,
+		});
+
+		child.on('error', error => {
+			reject(error);
+		});
+
+		child.on('exit', (code, signal) => {
+			if (signal) {
+				// If killed by signal, exit with 1 (or customize as needed)
+				process.exitCode = 1;
+			} else {
+				process.exitCode = code ?? 0;
+			}
+			resolve();
+		});
+	});
+}
+
+/**
+ * Checks whether a given string is a valid HTTP or HTTPS URL.
+ *
+ * @param {url} string - The URL string to validate.
+ * @returns {boolean} True if the string is a valid URL, false otherwise.
+ */
+export function isValidUrl(url: string): boolean {
+	const pattern = /^(https?:\/\/)[^\s/$.?#].[^\s]*$/i;
+	return pattern.test(url);
+}
 
 export function catchError<T>(fn: () => T, context: string): T {
 	try {
@@ -102,7 +142,7 @@ export const fetch = (url: string) => {
 			const res = await makeRequest();
 			return await res.json();
 		},
-		file: async (localPath: string): Promise<void> => {
+		file: async (localPath: string): Promise<string | void> => {
 			// Node.js implementation
 			const fs = await import('fs/promises');
 			const path = await import('path');
@@ -118,8 +158,7 @@ export const fetch = (url: string) => {
 
 			// Check if file already exists
 			if (await fileExists(localPath)) {
-				console.log(`File already exists: ${localPath}`);
-				return;
+				return `File already exists: ${localPath}`;
 			}
 
 			// File doesn't exist — proceed to fetch
@@ -132,7 +171,7 @@ export const fetch = (url: string) => {
 
 			// Write file
 			await fs.writeFile(localPath, new Uint8Array(buffer));
-			console.log(`Log file saved: ${localPath}`);
+			return `Log file saved: ${localPath}`;
 		},
 	};
 };
@@ -142,4 +181,6 @@ export default {
 	fetch,
 	getConfig,
 	cli,
+	isValidUrl,
+	runNpxAndExit,
 };
