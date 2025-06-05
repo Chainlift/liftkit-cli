@@ -35,6 +35,65 @@ export const cli = meow(
 	},
 );
 
+type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
+type JsonObject = {[key: string]: JsonValue};
+type JsonArray = JsonValue[];
+
+/**
+ * Merges two JSON objects deeply, with the second object taking precedence
+ * @param target - The base object to merge into
+ * @param source - The object to merge from (takes precedence)
+ * @returns A new merged object
+ */
+function mergeJson(target: JsonValue, source: JsonValue): JsonValue {
+	// If source is null/undefined, return target
+	if (source === null || source === undefined) {
+		return target;
+	}
+
+	// If target is null/undefined, return source
+	if (target === null || target === undefined) {
+		return source;
+	}
+
+	// If both are arrays, concatenate them
+	if (Array.isArray(target) && Array.isArray(source)) {
+		return [...target, ...source];
+	}
+
+	// If both are objects, merge recursively
+	if (
+		typeof target === 'object' &&
+		typeof source === 'object' &&
+		!Array.isArray(target) &&
+		!Array.isArray(source) &&
+		target !== null &&
+		source !== null
+	) {
+		const result: JsonObject = {...(target as JsonObject)};
+
+		for (const key in source as JsonObject) {
+			const sourceValue = (source as JsonObject)[key] ?? null;
+			const targetValue = result[key] ?? null;
+
+			result[key] = mergeJson(targetValue, sourceValue) as JsonValue;
+		}
+
+		return result;
+	}
+
+	// For primitive values or type mismatches, source takes precedence
+	return source;
+}
+
+/**
+ * Checks if package.json exists in the current directory.
+ * @returns boolean - true if package.json exists, false otherwise.
+ */
+export function hasPackageJson(): boolean {
+	return fs.existsSync(path.join(process.cwd(), 'package.json'));
+}
+
 /**
  * Runs an npx command with the given arguments,
  * forwarding stdio and exiting this process with the child's exit code.
@@ -67,7 +126,7 @@ export async function runNpxAndExit(args: string[]): Promise<void> {
 /**
  * Checks whether a given string is a valid HTTP or HTTPS URL.
  *
- * @param {url} string - The URL string to validate.
+ * @param url - The URL string to validate.
  * @returns {boolean} True if the string is a valid URL, false otherwise.
  */
 export function isValidUrl(url: string): boolean {
@@ -94,28 +153,6 @@ export function catchError<T>(fn: () => T, context: string): T {
 
 export const save = (filename: string, content: string): void => {
 	fs.writeFileSync(path.join(process.cwd(), filename), content, 'utf8');
-};
-
-/**
- * reads a local json config file and returns the parsed object.
- * @param filename - relative or absolute path to the json file
- */
-export const getConfig = (filename: string): any => {
-	return catchError(() => {
-		const filePath = path.isAbsolute(filename)
-			? filename
-			: path.join(process.cwd(), filename);
-
-		const fileContents = catchError(
-			() => fs.readFileSync(filePath, 'utf8'),
-			`Unable to read config file at path: ${filePath}`,
-		);
-
-		return catchError(
-			() => JSON.parse(fileContents),
-			`Invalid JSON in config file: ${filePath}`,
-		);
-	}, `Failed to load config file: ${filename}`);
 };
 
 export const fetch = (url: string) => {
@@ -179,8 +216,9 @@ export const fetch = (url: string) => {
 export default {
 	save,
 	fetch,
-	getConfig,
 	cli,
 	isValidUrl,
 	runNpxAndExit,
+	hasPackageJson,
+	mergeJson,
 };

@@ -1,10 +1,11 @@
 import React, {useState, useEffect} from 'react';
 import {Text} from 'ink';
 import lib from './lib.js';
+import {config} from './config.js';
 
 const App = () => {
 	const [message, setMessage] = useState('');
-	const config = lib.getConfig('./config.json');
+
 	const [color, setColor] = useState('green');
 	const posArgs = lib.cli.input;
 	useEffect(() => {
@@ -46,6 +47,12 @@ const App = () => {
 		}
 	}, []); // Add empty dependency array to run only once
 
+	useEffect(() => {
+		if (lib.hasPackageJson() == false) {
+			setColor('red');
+			setMessage('No packageJson found');
+		}
+	}, []);
 	return <Text color={color}>{message}</Text>;
 };
 export default App;
