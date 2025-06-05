@@ -29,11 +29,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: https://npm.pkg.github.com/
+          registry-url: https://registry.npmjs.org/
           scope: '@chainlift'
       - run: npm ci
-      - run: echo registry=https://npm.pkg.github.com/ >> .npmrc
+      - run: echo registry=https://registry.npmjs.org/ >> .npmrc
       - run: npm run build
       - run: npm publish --access public
         env:
-          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
