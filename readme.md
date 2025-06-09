@@ -35,4 +35,3 @@ Use the `add` command to import components from a remote LiftKit JSON manifest:
 ```bash
 liftkit add https://liftkit.pages.dev/all.json
 ```
-
