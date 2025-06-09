@@ -3,6 +3,7 @@ import path from 'path';
 import jv from 'ajv';
 import meow from 'meow';
 import {spawn} from 'child_process';
+
 export const cli = meow(
 	`
 	Usage
@@ -12,13 +13,7 @@ export const cli = meow(
 		init  Downloads essential files
 	  add <component>  Download a component from the registry
 
-	Options
-	  --name  Your name
-
 	Examples
-	  $ liftkit --name=Jane
-	  Hello, Jane
-
 	  $ liftkit add button
 	  Downloads the button component
 
@@ -27,11 +22,6 @@ export const cli = meow(
 `,
 	{
 		importMeta: import.meta,
-		flags: {
-			name: {
-				type: 'string',
-			},
-		},
 	},
 );
 

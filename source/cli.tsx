@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-import React from 'react';
-import {render} from 'ink';
-import App from './app.js';
+import {runCli} from './app.js';
 
-render(<App />);
+runCli();
