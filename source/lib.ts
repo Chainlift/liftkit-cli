@@ -6,7 +6,7 @@ import {spawn} from 'child_process';
 export const cli = meow(
 	`
 	Usage
-	  $ lifty [command] [options]
+	  $ liftkit [command] [options]
 
 	Commands
 		init  Downloads essential files
@@ -16,13 +16,13 @@ export const cli = meow(
 	  --name  Your name
 
 	Examples
-	  $ lifty --name=Jane
+	  $ liftkit --name=Jane
 	  Hello, Jane
 
-	  $ lifty add button
+	  $ liftkit add button
 	  Downloads the button component
 
-	  $ lifty add modal
+	  $ liftkit add modal
 	  Downloads the modal component
 `,
 	{

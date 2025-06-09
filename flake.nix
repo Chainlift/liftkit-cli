@@ -40,11 +40,9 @@
         {
           default = pkgs.mkShell {
             # Pinned packages available in the environment
-            shellHook = ''
-              alias lifty="node ./dist/cli.js"
-            '';
+            shellHook = '''';
             packages = with pkgs; [
-              (pkgs.writeScriptBin "lifty" "${nodejs_22}/bin/node ./dist/cli.js $@")
+              (pkgs.writeScriptBin "liftkit" "${nodejs_22}/bin/node ./dist/cli.js $@")
               nodePackages.prettier
               nodejs_22
               nixpkgs-fmt
