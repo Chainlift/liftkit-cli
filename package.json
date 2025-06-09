@@ -18,7 +18,7 @@
 		"bundle": "esbuild source/cli.tsx --bundle --platform=node --target=node16 --format=cjs --outfile=dist/cli.cjs --minify",
 		"build": "npm-run-all --parallel typecheck bundle",
 		"dev": "npm-run-all --parallel \"typecheck -- --watch\" \"bundle -- --watch\"",
-		"test": "prettier --check .",
+		"prettier": "prettier --check .",
 		"me": "node ./dist/cli.cjs"
 	},
 	"files": [
