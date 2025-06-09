@@ -42,7 +42,7 @@
             # Pinned packages available in the environment
             shellHook = '''';
             packages = with pkgs; [
-              (pkgs.writeScriptBin "liftkit" "${nodejs_22}/bin/node ./dist/cli.js $@")
+              (pkgs.writeScriptBin "liftkit" "${nodejs_22}/bin/node ./dist/cli.cjs $@")
               nodePackages.prettier
               nodejs_22
               nixpkgs-fmt
