@@ -6,11 +6,11 @@ import readline from 'readline';
 
 export const rl = readline.createInterface({
 	input: process.stdin,
-	output: process.stdout
+	output: process.stdout,
 });
 
 export const question = (query: string): Promise<string> => {
-	return new Promise((resolve) => {
+	return new Promise(resolve => {
 		rl.question(query, resolve);
 	});
 };
@@ -231,14 +231,19 @@ export function getFilePath(filename: string): string {
  * @param expectedConfig - Expected tsconfig object
  * @returns boolean indicating if paths match
  */
-export function tsconfigPathsMatch(existingConfig: any, expectedConfig: any): boolean {
+export function tsconfigPathsMatch(
+	existingConfig: any,
+	expectedConfig: any,
+): boolean {
 	const existingPaths = existingConfig?.compilerOptions?.paths?.['@/*'];
 	const expectedPaths = expectedConfig?.compilerOptions?.paths?.['@/*'];
-	
-	return Array.isArray(existingPaths) && 
+
+	return (
+		Array.isArray(existingPaths) &&
 		Array.isArray(expectedPaths) &&
 		existingPaths.length === expectedPaths.length &&
-		existingPaths.every((v: string, i: number) => v === expectedPaths[i]);
+		existingPaths.every((v: string, i: number) => v === expectedPaths[i])
+	);
 }
 
 export default {
@@ -254,5 +259,5 @@ export default {
 	rl,
 	isValidUrl,
 	runNpxAndExit,
-	catchError
+	catchError,
 };

@@ -32,5 +32,5 @@ export const config: Config = {
 				'@/*': ['./src/*'],
 			},
 		},
-	}, 
+	},
 };
