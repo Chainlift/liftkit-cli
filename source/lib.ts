@@ -2,6 +2,18 @@ import fs from 'fs';
 import path from 'path';
 import jv from 'ajv';
 import {spawn} from 'child_process';
+import readline from 'readline';
+
+export const rl = readline.createInterface({
+	input: process.stdin,
+	output: process.stdout
+});
+
+export const question = (query: string): Promise<string> => {
+	return new Promise((resolve) => {
+		rl.question(query, resolve);
+	});
+};
 
 type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
 type JsonObject = {[key: string]: JsonValue};
@@ -13,7 +25,7 @@ type JsonArray = JsonValue[];
  * @param source - The object to merge from (takes precedence)
  * @returns A new merged object
  */
-function mergeJson(target: JsonValue, source: JsonValue): JsonValue {
+export function mergeJson(target: JsonValue, source: JsonValue): JsonValue {
 	// If source is null/undefined, return target
 	if (source === null || source === undefined) {
 		return target;
@@ -181,9 +193,66 @@ export const fetch = (url: string) => {
 	};
 };
 
+/**
+ * Reads and parses a JSON file from the given path
+ * @param filePath - Path to the JSON file
+ * @returns Parsed JSON object or null if file doesn't exist
+ */
+export function readJsonFile(filePath: string): any {
+	try {
+		const content = fs.readFileSync(filePath, 'utf8');
+		return JSON.parse(content);
+	} catch (error) {
+		return null;
+	}
+}
+
+/**
+ * Checks if a file exists at the given path
+ * @param filePath - Path to check
+ * @returns boolean indicating if file exists
+ */
+export function fileExists(filePath: string): boolean {
+	return fs.existsSync(filePath);
+}
+
+/**
+ * Gets the full path for a file in the current working directory
+ * @param filename - Name of the file
+ * @returns Full path to the file
+ */
+export function getFilePath(filename: string): string {
+	return path.join(process.cwd(), filename);
+}
+
+/**
+ * Checks if tsconfig paths match the expected configuration
+ * @param existingConfig - Existing tsconfig object
+ * @param expectedConfig - Expected tsconfig object
+ * @returns boolean indicating if paths match
+ */
+export function tsconfigPathsMatch(existingConfig: any, expectedConfig: any): boolean {
+	const existingPaths = existingConfig?.compilerOptions?.paths?.['@/*'];
+	const expectedPaths = expectedConfig?.compilerOptions?.paths?.['@/*'];
+	
+	return Array.isArray(existingPaths) && 
+		Array.isArray(expectedPaths) &&
+		existingPaths.length === expectedPaths.length &&
+		existingPaths.every((v: string, i: number) => v === expectedPaths[i]);
+}
+
 export default {
 	save,
 	fetch,
 	hasPackageJson,
 	mergeJson,
+	readJsonFile,
+	fileExists,
+	getFilePath,
+	tsconfigPathsMatch,
+	question,
+	rl,
+	isValidUrl,
+	runNpxAndExit,
+	catchError
 };

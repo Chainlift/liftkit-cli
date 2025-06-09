@@ -3,7 +3,9 @@ export interface TsConfigJson {
 		paths: {
 			[key: string]: string[];
 		};
+		[key: string]: any;
 	};
+	[key: string]: any;
 }
 
 export interface Config {
@@ -30,5 +32,5 @@ export const config: Config = {
 				'@/*': ['./src/*'],
 			},
 		},
-	},
+	}, 
 };
