@@ -1,29 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import jv from 'ajv';
-import meow from 'meow';
 import {spawn} from 'child_process';
-
-export const cli = meow(
-	`
-	Usage
-	  $ liftkit [command] [options]
-
-	Commands
-		init  Downloads essential files
-	  add <component>  Download a component from the registry
-
-	Examples
-	  $ liftkit add button
-	  Downloads the button component
-
-	  $ liftkit add modal
-	  Downloads the modal component
-`,
-	{
-		importMeta: import.meta,
-	},
-);
 
 type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
 type JsonObject = {[key: string]: JsonValue};
@@ -206,9 +184,6 @@ export const fetch = (url: string) => {
 export default {
 	save,
 	fetch,
-	cli,
-	isValidUrl,
-	runNpxAndExit,
 	hasPackageJson,
 	mergeJson,
 };
