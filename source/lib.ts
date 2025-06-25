@@ -78,28 +78,22 @@ export function hasPackageJson(): boolean {
  * Runs an npx command with the given arguments,
  * forwarding stdio and exiting this process with the child's exit code.
  *
- * @param args - Array of arguments to pass to npx (e.g., ['create-react-app', 'my-app'])
+ * @param command - The command to run
+ * @param args - Array of additional arguments to pass to npx
  */
-export async function runNpxAndExit(args: string[]): Promise<void> {
-	return new Promise((resolve, reject) => {
-		const child = spawn('npx', args, {
-			stdio: 'inherit',
-			shell: true,
-		});
+export function runNpxAndExit(command: string, args: string[] = []): void {
+	const child = spawn('npx', [command, ...args], {
+		stdio: 'inherit',
+		shell: true,
+	});
 
-		child.on('error', error => {
-			reject(error);
-		});
+	child.on('exit', code => {
+		process.exit(code ?? 0);
+	});
 
-		child.on('exit', (code, signal) => {
-			if (signal) {
-				// If killed by signal, exit with 1 (or customize as needed)
-				process.exitCode = 1;
-			} else {
-				process.exitCode = code ?? 0;
-			}
-			resolve();
-		});
+	child.on('error', err => {
+		console.error('Failed to run npx:', err);
+		process.exit(1);
 	});
 }
 

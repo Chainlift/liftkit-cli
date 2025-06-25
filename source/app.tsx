@@ -13,6 +13,7 @@ import {
 	getFilePath,
 	tsconfigPathsMatch,
 } from './lib.js';
+import chalk from 'chalk';
 
 export async function initCommand() {
 	try {
@@ -32,7 +33,10 @@ export async function initCommand() {
 			} else {
 				const mergedConfig = mergeJson(existingTsConfig, config.tsconfigjson);
 				console.log('\x1b[36m%s\x1b[0m', 'Proposed tsconfig.json changes:');
-				console.log(JSON.stringify(mergedConfig, null, 2));
+				printGitDiff(
+					JSON.stringify(existingTsConfig, null, 2),
+					JSON.stringify(mergedConfig, null, 2),
+				);
 
 				const answer = await question(
 					'\nDo you want to apply these changes? (y/N): ',
@@ -76,10 +80,57 @@ export async function initCommand() {
 }
 
 export async function addCommand(component: string) {
-	if (isValidUrl(component)) {
-		await runNpxAndExit(['shadcn', 'add', component]);
-	}
 	if (hasPackageJson() === false) {
+		rl.close();
 		console.error('\x1b[31m%s\x1b[0m', 'No packageJson found');
+		process.exit(1);
+	}
+
+	rl.close();
+	if (isValidUrl(component)) {
+		runNpxAndExit('shadcn@2.7.0', ['add', component]);
+	} else {
+		runNpxAndExit('shadcn@2.7.0', [
+			'add',
+			`https://liftkit.pages.dev/r/${component}.json`,
+		]);
+	}
+}
+
+function printGitDiff(oldStr: string, newStr: string) {
+	const oldLines = oldStr.split('\n');
+	const newLines = newStr.split('\n');
+	let i = 0,
+		j = 0;
+	while (i < oldLines.length || j < newLines.length) {
+		if (
+			i < oldLines.length &&
+			j < newLines.length &&
+			oldLines[i] === newLines[j]
+		) {
+			// Context line
+			console.log(`${j + 1}  ${oldLines[i]}`);
+			i++;
+			j++;
+		} else if (
+			j < newLines.length &&
+			(i >= oldLines.length || oldLines[i] !== newLines[j])
+		) {
+			// Start of a chunk of additions
+			const contextIdx = j > 0 ? j : null;
+			if (contextIdx !== null && contextIdx > 0) {
+				console.log(`${contextIdx}  ${newLines[contextIdx - 1]}`);
+			}
+			// Print all consecutive additions
+			while (
+				j < newLines.length &&
+				(i >= oldLines.length || oldLines[i] !== newLines[j])
+			) {
+				console.log(chalk.green(`+ ${j + 1}  ${newLines[j]}`));
+				j++;
+			}
+		} else {
+			i++;
+		}
 	}
 }
