@@ -96,27 +96,20 @@ export async function initCommand() {
 				const hasShadcn =
 					pkg.devDependencies && pkg.devDependencies['shadcn'] === '2.7.0';
 				if (!hasShadcn) {
-					const answer = await question(
-						'Install shadcn@2.7.0 as a devDependency? (y/N): ',
-					);
-					if (answer.toLowerCase() === 'y') {
-						const {execSync} = await import('node:child_process');
-						try {
-							execSync('npm install shadcn@2.7.0 --save-dev', {
-								stdio: 'inherit',
-							});
-							console.log(
-								'\x1b[32m%s\x1b[0m',
-								'✓ Installed shadcn@2.7.0 as a devDependency',
-							);
-						} catch (e) {
-							console.error(
-								'\x1b[31m%s\x1b[0m',
-								'Failed to install shadcn@2.7.0',
-							);
-						}
-					} else {
-						console.log('\x1b[33m%s\x1b[0m', 'Skipped installing shadcn@2.7.0');
+					const {execSync} = await import('node:child_process');
+					try {
+						execSync('npm install shadcn@2.7.0 --save-dev', {
+							stdio: 'inherit',
+						});
+						console.log(
+							'\x1b[32m%s\x1b[0m',
+							'✓ Installed shadcn@2.7.0 as a devDependency',
+						);
+					} catch (e) {
+						console.error(
+							'\x1b[31m%s\x1b[0m',
+							'Failed to install shadcn@2.7.0',
+						);
 					}
 				} else {
 					console.log(
