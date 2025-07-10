@@ -3,9 +3,9 @@ export interface TsConfigJson {
 		paths: {
 			[key: string]: string[];
 		};
-		[key: string]: any;
+		[key: string]: string[] | string | number | boolean | object | undefined;
 	};
-	[key: string]: any;
+	[key: string]: string[] | string | number | boolean | object | undefined;
 }
 
 export interface Config {
