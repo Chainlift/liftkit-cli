@@ -1,5 +1,9 @@
 node_modules
 dist
-.direnv
+.env
 components.json
-tailwind.config.ts
+test_output/
+.direnv
+coverage/
+.stryker-tmp/sandbox-Wn030u
+reports/mutation
