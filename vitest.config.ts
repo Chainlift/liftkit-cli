@@ -1,7 +1,7 @@
-import { defineConfig } from 'vitest/config';
+import {defineConfig} from 'vitest/config';
 
 export default defineConfig({
-  coverage: {
-    reporter: ['text'], // Only show coverage in the CLI
-  },
-}); 
+	coverage: {
+		reporter: ['text'], // Only show coverage in the CLI
+	},
+});
