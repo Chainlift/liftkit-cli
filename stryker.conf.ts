@@ -1,7 +1,6 @@
-/**
- * @type {import('@stryker-mutator/api/core').StrykerOptions}
- */
-module.exports = {
+import type { StrykerOptions } from '@stryker-mutator/api/core';
+
+const config: StrykerOptions = {
   mutate: [
     'source/**/*.ts',
     '!source/**/*.test.ts',
@@ -11,4 +10,6 @@ module.exports = {
   reporters: ['html', 'clear-text', 'progress'],
   coverageAnalysis: 'off',
   tsconfigFile: 'tsconfig.json',
-}; 
+};
+
+export default config; 
