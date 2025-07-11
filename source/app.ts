@@ -44,7 +44,7 @@ export async function initCommand() {
                     '✓ tsconfig.json is already correct. No changes needed.',
                 );
                 break;
-            case fileExists(tsconfigPath):
+            case fileExists(tsconfigPath): {
                 existingTsConfig = readJsonFile(tsconfigPath);
                 console.log('\x1b[33m%s\x1b[0m', 'Found existing tsconfig.json');
                 const mergedConfig = mergeJson(existingTsConfig as JsonValue, config.tsconfigjson as JsonValue);
@@ -57,30 +57,36 @@ export async function initCommand() {
                     '\nDo you want to apply these changes? (y/N): ',
                 );
                 switch (answer.toLowerCase() === 'y') {
-                    case true:
+                    case true: {
                         save('tsconfig.json', JSON.stringify(mergedConfig, null, 2));
-                        console.log('\x1b[32m%s\x1b[0m', '✓ Updated tsconfig.json');
+                        console.log('\x1b[32m%s\x1b[0m', '\u2713 Updated tsconfig.json');
                         break;
-                    default:
+                    }
+                    default: {
                         console.log('\x1b[33m%s\x1b[0m', 'Skipped tsconfig.json update');
                         break;
+                    }
                 }
                 break;
-            default:
+            }
+            default: {
                 // If no tsconfig.json exists, create one with our config
                 const answer2 = await question(
                     'No tsconfig.json found. Create one with recommended settings? (y/N): ',
                 );
                 switch (answer2.toLowerCase() === 'y') {
-                    case true:
+                    case true: {
                         save('tsconfig.json', JSON.stringify(config.tsconfigjson, null, 2));
-                        console.log('\x1b[32m%s\x1b[0m', '✓ Created tsconfig.json');
+                        console.log('\x1b[32m%s\x1b[0m', '\u2713 Created tsconfig.json');
                         break;
-                    default:
+                    }
+                    default: {
                         console.log('\x1b[33m%s\x1b[0m', 'Skipped tsconfig.json creation');
                         break;
+                    }
                 }
                 break;
+            }
         }
 		// Add or update npm run add script in package.json
 		const pkgPath = getFilePath('package.json');
