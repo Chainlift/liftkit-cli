@@ -15,7 +15,7 @@
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit",
-		"bundle": "esbuild source/cli.tsx --bundle --platform=node --target=node16 --format=cjs --outfile=dist/cli.cjs --minify",
+		"bundle": "esbuild source/cli.ts --bundle --platform=node --target=node16 --format=cjs --outfile=dist/cli.cjs --minify",
 		"build": "npm-run-all --parallel lint typecheck bundle",
 		"dev": "npm-run-all --parallel \"typecheck -- --watch\" \"bundle -- --watch\"",
 		"prettier": "prettier --check .",
