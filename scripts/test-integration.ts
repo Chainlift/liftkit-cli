@@ -300,7 +300,7 @@ function getAllFiles(dir: string): string[] {
     try {
         items = fs.readdirSync(dir);
     } catch {
-        console.warn(`Warning: Could not read directory ${dir}`);
+        // console.warn(`Warning: Could not read directory ${dir}`);
         return [];
     }
     return (items || []).flatMap(item => {
@@ -309,11 +309,11 @@ function getAllFiles(dir: string): string[] {
         try {
             stat = fs.lstatSync(fullPath);
         } catch {
-            console.warn(`Warning: Could not stat ${fullPath}`);
+            // console.warn(`Warning: Could not stat ${fullPath}`);
             return [];
         }
         if (stat.isSymbolicLink()) {
-            console.warn(`Warning: Skipping symlink ${fullPath}`);
+            // console.warn(`Warning: Skipping symlink ${fullPath}`);
             return [];
         } else if (stat.isDirectory()) {
             return getAllFiles(fullPath);
