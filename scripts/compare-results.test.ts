@@ -82,7 +82,7 @@ describe('compare-results module', () => {
           return originalLstatSync(p);
       }
     };
-    (fs as any).lstatSync = mockLstatSync;
+    (fs as unknown as { lstatSync: typeof mockLstatSync }).lstatSync = mockLstatSync;
     let files: string[] = [];
     expect(() => {
       files = getAllFiles(tempDir);
@@ -90,7 +90,7 @@ describe('compare-results module', () => {
     expect(files).toContain(file1);
     expect(files).not.toContain(file2);
     // Restore original function
-    (fs as any).lstatSync = originalLstatSync;
+    (fs as unknown as { lstatSync: typeof originalLstatSync }).lstatSync = originalLstatSync;
   });
 
   test('getAllFiles skips symlinks and does not recurse into them', () => {
@@ -287,8 +287,8 @@ describe('compare-results module', () => {
       }
     });
     const originalError = console.error;
-    let errorArgs: any[] = [];
-    console.error = (...args: any[]) => { errorArgs = args; };
+    let errorArgs: unknown[] = [];
+    console.error = (...args: unknown[]) => { errorArgs = args; };
     expect(() => cliRunner()).toThrow('Test directories not found');
     expect(errorArgs.some(arg => typeof arg === 'string' && arg.includes('Test directories not found'))).toBe(true);
     console.error = originalError;
