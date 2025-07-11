@@ -55,6 +55,7 @@
 	},
 	"prettier": "@vdemedes/prettier-config",
 	"dependencies": {
-		"diff": "^8.0.2"
+		"diff": "^8.0.2",
+		"jiti": "^2.4.2"
 	}
 }
