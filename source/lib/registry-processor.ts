@@ -330,7 +330,13 @@ export class RegistryProcessor {
 	private generateCSSVars(cssVars: import('./registry-types.js').CSSVars): string {
 		let css = '\n/* CSS Variables from Registry */\n';
 		Object.entries(cssVars).forEach(([key, value]) => {
-			css += `  --${key}: ${value};\n`;
+			if (typeof value === 'object' && value !== null) {
+				Object.entries(value).forEach(([subKey, subValue]) => {
+					css += `  --${subKey}: ${subValue};\n`;
+				});
+			} else {
+				css += `  --${key}: ${value};\n`;
+			}
 		});
 		return css;
 	}
