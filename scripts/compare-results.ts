@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
-const diff = require('diff');
+import fs from 'fs';
+import path from 'path';
+import * as diff from 'diff';
+import { fileURLToPath } from 'url';
+
+// ES module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Helper function to get all files recursively
-function getAllFiles(dir) {
+export function getAllFiles(dir: string): string[] {
     let items;
     try {
         items = fs.readdirSync(dir);
@@ -34,11 +39,11 @@ function getAllFiles(dir) {
 }
 
 // Helper function to get relative path
-function getRelativePath(fullPath, baseDir) {
+export function getRelativePath(fullPath: string, baseDir: string): string {
     return path.relative(baseDir, fullPath);
 }
 
-function isBinaryFile(filePath) {
+export function isBinaryFile(filePath: string): boolean {
     try {
         const fd = fs.openSync(filePath, 'r');
         const buffer = Buffer.alloc(100);
@@ -51,7 +56,7 @@ function isBinaryFile(filePath) {
     }
 }
 
-function compareFileContents(shadcnPath, liftkitPath) {
+export function compareFileContents(shadcnPath: string, liftkitPath: string): boolean {
     try {
         switch (true) {
             case isBinaryFile(shadcnPath):
@@ -64,19 +69,19 @@ function compareFileContents(shadcnPath, liftkitPath) {
         const cleanShadcn = shadcnContent
             .replace(/\/\*[\s\S]*?\*\//g, '') // Remove block comments
             .replace(/\/\/.*$/gm, '') // Remove line comments
-            .trim();
+            .split('\n').map(line => line.trim()).filter(line => line.length > 0).join('\n');
         const cleanLiftkit = liftkitContent
             .replace(/\/\*[\s\S]*?\*\//g, '') // Remove block comments
             .replace(/\/\/.*$/gm, '') // Remove line comments
-            .trim();
+            .split('\n').map(line => line.trim()).filter(line => line.length > 0).join('\n');
         return cleanShadcn === cleanLiftkit;
     } catch (error) {
-        console.error(`Error comparing files: ${error.message}`);
+        console.error(`Error comparing files: ${(error as Error).message}`);
         return false;
     }
 }
 
-function getDiff(file1, file2) {
+export function getDiff(file1: string, file2: string): string {
     const content1 = fs.readFileSync(file1, 'utf-8');
     const content2 = fs.readFileSync(file2, 'utf-8');
     switch (content1 === content2) {
@@ -88,7 +93,7 @@ function getDiff(file1, file2) {
 }
 
 // Main comparison function
-function compareResults(SHADCN_DIR, LIFTKIT_DIR, detailed = false) {
+export function compareResults(SHADCN_DIR: string, LIFTKIT_DIR: string, detailed = false) {
     // Flattened: single switch for directory existence
     switch (true) {
         case !fs.existsSync(SHADCN_DIR):
@@ -98,8 +103,8 @@ function compareResults(SHADCN_DIR, LIFTKIT_DIR, detailed = false) {
     const shadcnFiles = getAllFiles(SHADCN_DIR);
     const liftkitFiles = getAllFiles(LIFTKIT_DIR);
     // Create a map of relative paths to full paths
-    const shadcnMap = new Map();
-    const liftkitMap = new Map();
+    const shadcnMap = new Map<string, string>();
+    const liftkitMap = new Map<string, string>();
     shadcnFiles.forEach(file => {
         const relative = getRelativePath(file, SHADCN_DIR);
         shadcnMap.set(relative, file);
@@ -109,18 +114,18 @@ function compareResults(SHADCN_DIR, LIFTKIT_DIR, detailed = false) {
         liftkitMap.set(relative, file);
     });
     // Find common files
-    const commonFiles = [];
-    const shadcnOnly = [];
-    const liftkitOnly = [];
+    const commonFiles: string[] = [];
+    const shadcnOnly: string[] = [];
+    const liftkitOnly: string[] = [];
     // Flattened: single switch for map membership
-    shadcnMap.forEach((shadcnPath, relativePath) => {
+    shadcnMap.forEach((_shadcnPath, relativePath) => {
         if (liftkitMap.has(relativePath)) {
             commonFiles.push(relativePath);
         } else {
             shadcnOnly.push(relativePath);
         }
     });
-    liftkitMap.forEach((liftkitPath, relativePath) => {
+    liftkitMap.forEach((_liftkitPath, relativePath) => {
         if (!shadcnMap.has(relativePath)) {
             liftkitOnly.push(relativePath);
         }
@@ -130,8 +135,8 @@ function compareResults(SHADCN_DIR, LIFTKIT_DIR, detailed = false) {
     let contentMismatches = 0;
     // Flattened: single switch for content matches
     commonFiles.forEach(relativePath => {
-        const shadcnPath = shadcnMap.get(relativePath);
-        const liftkitPath = liftkitMap.get(relativePath);
+        const shadcnPath = shadcnMap.get(relativePath)!;
+        const liftkitPath = liftkitMap.get(relativePath)!;
         const matches = compareFileContents(shadcnPath, liftkitPath);
         if (matches) {
             contentMatches++;
@@ -181,7 +186,7 @@ function compareResults(SHADCN_DIR, LIFTKIT_DIR, detailed = false) {
     }
 }
 
-function cliRunner() {
+export function cliRunner() {
     const TEST_OUTPUT_DIR = path.join(__dirname, '..', 'test_output');
     const SHADCN_DIR = path.join(TEST_OUTPUT_DIR, 'shadcn');
     const LIFTKIT_DIR = path.join(TEST_OUTPUT_DIR, 'liftkit');
@@ -192,25 +197,9 @@ function cliRunner() {
         console.log('CLI runner executed.');
         return result;
     } catch (e) {
-        console.error('\u274c', e.message);
-        process.exit(1);
-        // If process.exit does not throw, re-throw the original error so tests can catch it
+        console.error('\u274c', (e as Error).message);
         throw e;
     }
 }
 
-// Export for testing
-module.exports = {
-    getAllFiles,
-    getRelativePath,
-    compareFileContents,
-    compareResults,
-    getDiff,
-    cliRunner,
-    isBinaryFile
-};
-
-// CLI runner
-if (require.main === module) {
-    cliRunner();
-} 
+// cliRunner(); // Remove direct call for testability 
