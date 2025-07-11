@@ -19,6 +19,7 @@
 		"build": "npm-run-all --parallel lint typecheck bundle",
 		"dev": "npm-run-all --parallel \"typecheck -- --watch\" \"bundle -- --watch\"",
 		"prettier": "prettier --check .",
+		"prettier:fix": "prettier --write .",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"coverage": "vitest run --coverage",

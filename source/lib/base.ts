@@ -15,7 +15,13 @@ export const question = (query: string): Promise<string> => {
 	});
 };
 
-export type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
+export type JsonValue =
+	| string
+	| number
+	| boolean
+	| null
+	| JsonObject
+	| JsonArray;
 type JsonObject = {[key: string]: JsonValue};
 type JsonArray = JsonValue[];
 
@@ -39,16 +45,15 @@ export function mergeJson(target: JsonValue, source: JsonValue): JsonValue {
 			!Array.isArray(target) &&
 			!Array.isArray(source) &&
 			target !== null &&
-			source !== null:
-			{
-				const result = {...(target as JsonObject)};
-				Object.keys(source as JsonObject).forEach(key => {
-					const sourceValue = (source as JsonObject)[key] ?? null;
-					const targetValue = result[key] ?? null;
-					result[key] = mergeJson(targetValue, sourceValue) as JsonValue;
-				});
-				return result;
-			}
+			source !== null: {
+			const result = {...(target as JsonObject)};
+			Object.keys(source as JsonObject).forEach(key => {
+				const sourceValue = (source as JsonObject)[key] ?? null;
+				const targetValue = result[key] ?? null;
+				result[key] = mergeJson(targetValue, sourceValue) as JsonValue;
+			});
+			return result;
+		}
 		// For primitive values or type mismatches, source takes precedence
 		default:
 			return source;
@@ -110,7 +115,9 @@ export function catchError<T>(fn: () => T, context: string): T {
 				console.error(`\n❌ ${context}\n\n  → ${err.message}\n`);
 			}
 		} else if (err && typeof err === 'object' && 'message' in err) {
-			console.error(`\n❌ ${context}\n\n  → ${(err as { message?: string }).message || err}`);
+			console.error(
+				`\n❌ ${context}\n\n  → ${(err as {message?: string}).message || err}`,
+			);
 		} else {
 			console.error(`\n❌ ${context}\n\n  → ${String(err)}`);
 		}
@@ -224,8 +231,10 @@ export function tsconfigPathsMatch(
 	existingConfig: unknown,
 	expectedConfig: unknown,
 ): boolean {
-	const existingPaths = (existingConfig as TsConfigJson)?.compilerOptions?.paths?.['@/*'];
-	const expectedPaths = (expectedConfig as TsConfigJson)?.compilerOptions?.paths?.['@/*'];
+	const existingPaths = (existingConfig as TsConfigJson)?.compilerOptions
+		?.paths?.['@/*'];
+	const expectedPaths = (expectedConfig as TsConfigJson)?.compilerOptions
+		?.paths?.['@/*'];
 
 	switch (true) {
 		case Array.isArray(existingPaths) &&

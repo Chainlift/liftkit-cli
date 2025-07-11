@@ -6,9 +6,7 @@
 import * as realFs from 'fs';
 import * as path from 'node:path';
 import {execSync} from 'node:child_process';
-import {
-	processRegistryWithDependencies,
-} from './registry-process.js';
+import {processRegistryWithDependencies} from './registry-process.js';
 import {type RegistryItem} from './registry-types.js';
 
 interface ProcessedFile {
@@ -47,7 +45,10 @@ export class RegistryProcessor {
 	private componentsConfig: ComponentsConfig | null = null;
 	private fs: typeof realFs;
 
-	constructor(options: RegistryProcessorOptions = {}, fsModule: typeof realFs = realFs) {
+	constructor(
+		options: RegistryProcessorOptions = {},
+		fsModule: typeof realFs = realFs,
+	) {
 		this.options = {
 			baseDir: process.cwd(),
 			preserveSubdirectories: true,
@@ -61,26 +62,29 @@ export class RegistryProcessor {
 	async initialize() {
 		// Initialize the processor if needed
 		await processRegistryWithDependencies();
-		
+
 		// Load components.json configuration
 		this.loadComponentsConfig();
 	}
 
 	private loadComponentsConfig() {
-		const componentsPath = path.resolve(this.options.baseDir!, 'components.json');
-        switch (this.fs.existsSync(componentsPath)) {
-            case true: {
-                try {
-                    const configContent = this.fs.readFileSync(componentsPath, 'utf-8');
-                    this.componentsConfig = JSON.parse(configContent);
-                } catch (error) {
-                    console.warn('Failed to load components.json:', error);
-                }
-                break;
-            }
-            default:
-                break;
-        }
+		const componentsPath = path.resolve(
+			this.options.baseDir!,
+			'components.json',
+		);
+		switch (this.fs.existsSync(componentsPath)) {
+			case true: {
+				try {
+					const configContent = this.fs.readFileSync(componentsPath, 'utf-8');
+					this.componentsConfig = JSON.parse(configContent);
+				} catch (error) {
+					console.warn('Failed to load components.json:', error);
+				}
+				break;
+			}
+			default:
+				break;
+		}
 	}
 
 	async processRegistryItem(
@@ -88,47 +92,49 @@ export class RegistryProcessor {
 		options?: Partial<RegistryProcessorOptions>,
 	): Promise<ProcessedRegistryItem> {
 		const finalOptions = {...this.options, ...options};
-		
+
 		const processedFiles: ProcessedFile[] = [];
 		const npmDependencies: string[] = [];
 		const devDependencies: string[] = [];
 
 		// Process files
-        if (item.files && item.files.length > 0) {
-            const processed = await Promise.all(item.files.map(file => this.processFile(file, finalOptions)));
-            processed.forEach(processedFile => {
-                switch (processedFile) {
-                    case null:
-                        break;
-                    default:
-                        processedFiles.push(processedFile);
-                        break;
-                }
-            });
-        }
+		if (item.files && item.files.length > 0) {
+			const processed = await Promise.all(
+				item.files.map(file => this.processFile(file, finalOptions)),
+			);
+			processed.forEach(processedFile => {
+				switch (processedFile) {
+					case null:
+						break;
+					default:
+						processedFiles.push(processedFile);
+						break;
+				}
+			});
+		}
 
 		// Collect dependencies
-        switch (item.dependencies) {
-            case undefined:
-                break;
-            default:
-                npmDependencies.push(...item.dependencies);
-                break;
-        }
-        switch (item.devDependencies) {
-            case undefined:
-                break;
-            default:
-                devDependencies.push(...item.devDependencies);
-                break;
-        }
+		switch (item.dependencies) {
+			case undefined:
+				break;
+			default:
+				npmDependencies.push(...item.dependencies);
+				break;
+		}
+		switch (item.devDependencies) {
+			case undefined:
+				break;
+			default:
+				devDependencies.push(...item.devDependencies);
+				break;
+		}
 
 		// Install dependencies if requested
-        switch (finalOptions.installDependencies) {
-            case true:
-                await this.installDependencies(npmDependencies, devDependencies);
-                break;
-        }
+		switch (finalOptions.installDependencies) {
+			case true:
+				await this.installDependencies(npmDependencies, devDependencies);
+				break;
+		}
 
 		return {
 			item,
@@ -182,39 +188,45 @@ export class RegistryProcessor {
 		};
 	}
 
-	private resolveTargetPath(filePath: string, options: RegistryProcessorOptions): string {
+	private resolveTargetPath(
+		filePath: string,
+		options: RegistryProcessorOptions,
+	): string {
 		// Use components.json aliases if available
-        if (this.componentsConfig?.aliases) {
-            const aliases = this.componentsConfig.aliases;
-            if (filePath.startsWith('registry/nextjs/components/')) {
-                // For components, use the components alias (not ui)
-                const componentName = filePath.replace('registry/nextjs/components/', '');
-                const componentsPath = aliases['components'] || '@/components';
-                const resolvedPath = componentsPath.replace('@/', 'src/');
-                return path.resolve(options.baseDir!, resolvedPath, componentName);
-            } else if (filePath.startsWith('registry/universal/lib/')) {
-                // Map to the lib alias (e.g., @/lib)
-                const libName = filePath.replace('registry/universal/lib/', '');
-                const libPath = aliases['lib'] || '@/lib';
-                const resolvedPath2 = libPath.replace('@/', 'src/');
-                return path.resolve(options.baseDir!, resolvedPath2, libName);
-            } else if (filePath.startsWith('registry/nextjs/lib/')) {
-                // Map to the lib alias (e.g., @/lib)
-                const libName2 = filePath.replace('registry/nextjs/lib/', '');
-                const libPath2 = aliases['lib'] || '@/lib';
-                const resolvedPath3 = libPath2.replace('@/', 'src/');
-                return path.resolve(options.baseDir!, resolvedPath3, libName2);
-            }
-        }
+		if (this.componentsConfig?.aliases) {
+			const aliases = this.componentsConfig.aliases;
+			if (filePath.startsWith('registry/nextjs/components/')) {
+				// For components, use the components alias (not ui)
+				const componentName = filePath.replace(
+					'registry/nextjs/components/',
+					'',
+				);
+				const componentsPath = aliases['components'] || '@/components';
+				const resolvedPath = componentsPath.replace('@/', 'src/');
+				return path.resolve(options.baseDir!, resolvedPath, componentName);
+			} else if (filePath.startsWith('registry/universal/lib/')) {
+				// Map to the lib alias (e.g., @/lib)
+				const libName = filePath.replace('registry/universal/lib/', '');
+				const libPath = aliases['lib'] || '@/lib';
+				const resolvedPath2 = libPath.replace('@/', 'src/');
+				return path.resolve(options.baseDir!, resolvedPath2, libName);
+			} else if (filePath.startsWith('registry/nextjs/lib/')) {
+				// Map to the lib alias (e.g., @/lib)
+				const libName2 = filePath.replace('registry/nextjs/lib/', '');
+				const libPath2 = aliases['lib'] || '@/lib';
+				const resolvedPath3 = libPath2.replace('@/', 'src/');
+				return path.resolve(options.baseDir!, resolvedPath3, libName2);
+			}
+		}
 		// Fallback to original logic
-        if (options.preserveSubdirectories) {
-            // Preserve the original directory structure
-            return path.resolve(options.baseDir!, filePath);
-        } else {
-            // Flatten to base directory
-            const fileName = filePath.split('/').pop() || filePath;
-            return path.resolve(options.baseDir!, fileName);
-        }
+		if (options.preserveSubdirectories) {
+			// Preserve the original directory structure
+			return path.resolve(options.baseDir!, filePath);
+		} else {
+			// Flatten to base directory
+			const fileName = filePath.split('/').pop() || filePath;
+			return path.resolve(options.baseDir!, fileName);
+		}
 	}
 
 	private replaceRegistryPaths(content: string): string {
@@ -224,38 +236,59 @@ export class RegistryProcessor {
 		// Handle all possible registry path patterns with different quote styles
 		const patterns = [
 			// registry/nextjs/components/ -> @/components
-			{ from: /from ['"]@\/registry\/nextjs\/components\//g, to: "from '@/components/" },
-			{ from: /from ['"]registry\/nextjs\/components\//g, to: "from '@/components/" },
-			{ from: /import ['"]@\/registry\/nextjs\/components\//g, to: "import '@/components/" },
-			{ from: /import ['"]registry\/nextjs\/components\//g, to: "import '@/components/" },
-			
+			{
+				from: /from ['"]@\/registry\/nextjs\/components\//g,
+				to: "from '@/components/",
+			},
+			{
+				from: /from ['"]registry\/nextjs\/components\//g,
+				to: "from '@/components/",
+			},
+			{
+				from: /import ['"]@\/registry\/nextjs\/components\//g,
+				to: "import '@/components/",
+			},
+			{
+				from: /import ['"]registry\/nextjs\/components\//g,
+				to: "import '@/components/",
+			},
+
 			// registry/universal/lib/ -> @/lib
-			{ from: /from ['"]@\/registry\/universal\/lib\//g, to: "from '@/lib/" },
-			{ from: /from ['"]registry\/universal\/lib\//g, to: "from '@/lib/" },
-			{ from: /import ['"]@\/registry\/universal\/lib\//g, to: "import '@/lib/" },
-			{ from: /import ['"]registry\/universal\/lib\//g, to: "import '@/lib/" },
-			
+			{from: /from ['"]@\/registry\/universal\/lib\//g, to: "from '@/lib/"},
+			{from: /from ['"]registry\/universal\/lib\//g, to: "from '@/lib/"},
+			{from: /import ['"]@\/registry\/universal\/lib\//g, to: "import '@/lib/"},
+			{from: /import ['"]registry\/universal\/lib\//g, to: "import '@/lib/"},
+
 			// registry/nextjs/lib/ -> @/lib
-			{ from: /from ['"]@\/registry\/nextjs\/lib\//g, to: "from '@/lib/" },
-			{ from: /from ['"]registry\/nextjs\/lib\//g, to: "from '@/lib/" },
-			{ from: /import ['"]@\/registry\/nextjs\/lib\//g, to: "import '@/lib/" },
-			{ from: /import ['"]registry\/nextjs\/lib\//g, to: "import '@/lib/" },
-			
+			{from: /from ['"]@\/registry\/nextjs\/lib\//g, to: "from '@/lib/"},
+			{from: /from ['"]registry\/nextjs\/lib\//g, to: "from '@/lib/"},
+			{from: /import ['"]@\/registry\/nextjs\/lib\//g, to: "import '@/lib/"},
+			{from: /import ['"]registry\/nextjs\/lib\//g, to: "import '@/lib/"},
+
 			// registry/universal/ -> @/lib
-			{ from: /from ['"]@\/registry\/universal\//g, to: "from '@/lib/" },
-			{ from: /from ['"]registry\/universal\//g, to: "from '@/lib/" },
-			{ from: /import ['"]@\/registry\/universal\//g, to: "import '@/lib/" },
-			{ from: /import ['"]registry\/universal\//g, to: "import '@/lib/" },
-			
+			{from: /from ['"]@\/registry\/universal\//g, to: "from '@/lib/"},
+			{from: /from ['"]registry\/universal\//g, to: "from '@/lib/"},
+			{from: /import ['"]@\/registry\/universal\//g, to: "import '@/lib/"},
+			{from: /import ['"]registry\/universal\//g, to: "import '@/lib/"},
+
 			// CSS @import statements
-			{ from: /@import ['"]@\/registry\/nextjs\/components\//g, to: "@import '@/components/" },
-			{ from: /@import ['"]registry\/nextjs\/components\//g, to: "@import '@/components/" },
-			{ from: /@import ['"]@\/registry\/universal\/lib\//g, to: "@import '@/lib/" },
-			{ from: /@import ['"]registry\/universal\/lib\//g, to: "@import '@/lib/" },
-			{ from: /@import ['"]@\/registry\/nextjs\/lib\//g, to: "@import '@/lib/" },
-			{ from: /@import ['"]registry\/nextjs\/lib\//g, to: "@import '@/lib/" },
-			{ from: /@import ['"]@\/registry\/universal\//g, to: "@import '@/lib/" },
-			{ from: /@import ['"]registry\/universal\//g, to: "@import '@/lib/" },
+			{
+				from: /@import ['"]@\/registry\/nextjs\/components\//g,
+				to: "@import '@/components/",
+			},
+			{
+				from: /@import ['"]registry\/nextjs\/components\//g,
+				to: "@import '@/components/",
+			},
+			{
+				from: /@import ['"]@\/registry\/universal\/lib\//g,
+				to: "@import '@/lib/",
+			},
+			{from: /@import ['"]registry\/universal\/lib\//g, to: "@import '@/lib/"},
+			{from: /@import ['"]@\/registry\/nextjs\/lib\//g, to: "@import '@/lib/"},
+			{from: /@import ['"]registry\/nextjs\/lib\//g, to: "@import '@/lib/"},
+			{from: /@import ['"]@\/registry\/universal\//g, to: "@import '@/lib/"},
+			{from: /@import ['"]registry\/universal\//g, to: "@import '@/lib/"},
 		];
 
 		// Apply all patterns
@@ -266,12 +299,12 @@ export class RegistryProcessor {
 		// Normalize quote styles to match shadcn (use double quotes for imports)
 		processedContent = processedContent.replace(
 			/from ['"]@\/([^'"]+)['"]/g,
-			'from "@/$1"'
+			'from "@/$1"',
 		);
-		
+
 		processedContent = processedContent.replace(
 			/import ['"]@\/([^'"]+)['"]/g,
-			'import "@/$1"'
+			'import "@/$1"',
 		);
 
 		return processedContent;
@@ -281,18 +314,21 @@ export class RegistryProcessor {
 		dependencies: string[],
 		devDependencies: string[],
 	): Promise<void> {
-        switch (dependencies.length === 0 && devDependencies.length === 0) {
-            case true:
-                return;
-        }
+		switch (dependencies.length === 0 && devDependencies.length === 0) {
+			case true:
+				return;
+		}
 
 		const allDeps = [...dependencies, ...devDependencies];
 		console.log(`Installing dependencies: ${allDeps.join(', ')}`);
 
 		try {
-			const installCmd = devDependencies.length > 0
-				? `npm install ${dependencies.join(' ')} && npm install -D ${devDependencies.join(' ')}`
-				: `npm install ${dependencies.join(' ')}`;
+			const installCmd =
+				devDependencies.length > 0
+					? `npm install ${dependencies.join(
+							' ',
+					  )} && npm install -D ${devDependencies.join(' ')}`
+					: `npm install ${dependencies.join(' ')}`;
 
 			execSync(installCmd, {
 				cwd: this.options.baseDir,
@@ -304,7 +340,9 @@ export class RegistryProcessor {
 		}
 	}
 
-	async processCSSVars(cssVars: import('./registry-types.js').CSSVars): Promise<void> {
+	async processCSSVars(
+		cssVars: import('./registry-types.js').CSSVars,
+	): Promise<void> {
 		switch (true) {
 			case !cssVars || Object.keys(cssVars).length === 0:
 				return;
@@ -327,7 +365,9 @@ export class RegistryProcessor {
 		this.fs.writeFileSync(cssPath, cssContent, {flag: 'a'});
 	}
 
-	private generateCSSVars(cssVars: import('./registry-types.js').CSSVars): string {
+	private generateCSSVars(
+		cssVars: import('./registry-types.js').CSSVars,
+	): string {
 		let css = '\n/* CSS Variables from Registry */\n';
 		Object.entries(cssVars).forEach(([key, value]) => {
 			if (typeof value === 'object' && value !== null) {
@@ -348,4 +388,4 @@ export class RegistryProcessor {
 	clearProcessedUrls(): void {
 		this.processedUrls.clear();
 	}
-} 
+}

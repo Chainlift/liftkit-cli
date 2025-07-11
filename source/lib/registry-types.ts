@@ -175,4 +175,4 @@ export interface EnhancedSchemaProcessor extends SchemaProcessor {
 		allItems: RegistryItem[];
 	}>;
 	fetchIndex: () => Promise<RegistryIndex>;
-} 
+}

@@ -37,4 +37,3 @@ Replace shadcn's CLI with our own registry-driven system.
 - [ ] Performance optimizations
 - [ ] Better error recovery
 - [ ] Component dependency visualization
-
