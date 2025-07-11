@@ -25,11 +25,4 @@ export default defineConfig([
 			"json/no-empty-keys": "off"
 		}
 	},
-	// Relax linting for .cjs files (allow require imports)
-	{
-		files: ["**/*.cjs"],
-		rules: {
-			"@typescript-eslint/no-require-imports": "off"
-		}
-	},
-]);
+]); 
