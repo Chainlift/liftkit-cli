@@ -22,9 +22,9 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"coverage": "vitest run --coverage",
-		"test:integration": "node scripts/test-integration.cjs",
+		"test:integration": "node --loader ts-node/esm scripts/test-integration.ts",
 		"test:clean": "rm -rf test_output/",
-		"test:compare": "node scripts/compare-results.cjs",
+		"test:compare": "node --loader ts-node/esm scripts/compare-results.ts",
 		"lint": "eslint . --ext .js,.jsx,.ts,.tsx"
 	},
 	"files": [
