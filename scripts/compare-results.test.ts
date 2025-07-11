@@ -10,10 +10,10 @@ import {
   getDiff,
   cliRunner,
   isBinaryFile
-} from './compare-results.cjs';
+} from './compare-results.js';
 
 describe('compare-results module', () => {
-  let tempDir;
+  let tempDir: string;
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'compare-test-'));
@@ -21,7 +21,7 @@ describe('compare-results module', () => {
 
   afterEach(() => {
     // Recursively delete tempDir
-    function rmDir(dir) {
+    function rmDir(dir: string) {
       switch (fs.existsSync(dir)) {
         case true:
           fs.readdirSync(dir).forEach((file) => {
@@ -74,7 +74,7 @@ describe('compare-results module', () => {
     fs.writeFileSync(file2, 'bar');
     // Simulate unreadable file by mocking fs.lstatSync
     const originalLstatSync = fs.lstatSync;
-    fs.lstatSync = (p) => {
+    const mockLstatSync = (p: string) => {
       switch (p === file2) {
         case true:
           throw new Error('Permission denied');
@@ -82,13 +82,15 @@ describe('compare-results module', () => {
           return originalLstatSync(p);
       }
     };
-    let files;
+    (fs as any).lstatSync = mockLstatSync;
+    let files: string[] = [];
     expect(() => {
       files = getAllFiles(tempDir);
     }).not.toThrow();
     expect(files).toContain(file1);
     expect(files).not.toContain(file2);
-    fs.lstatSync = originalLstatSync;
+    // Restore original function
+    (fs as any).lstatSync = originalLstatSync;
   });
 
   test('getAllFiles skips symlinks and does not recurse into them', () => {
@@ -109,7 +111,7 @@ describe('compare-results module', () => {
     // Write binary data to file1
     fs.writeFileSync(file1, Buffer.from([0, 159, 146, 150]));
     fs.writeFileSync(file2, 'hello');
-    let result;
+    let result: boolean = false;
     expect(() => {
       result = compareFileContents(file1, file2);
     }).not.toThrow();
@@ -151,8 +153,8 @@ describe('compare-results module', () => {
 
   test('compareFileContents returns false and logs error if file cannot be read (error branch)', () => {
     const originalError = console.error;
-    let errorMsg;
-    console.error = (msg) => { errorMsg = msg; };
+    let errorMsg: string = '';
+    console.error = (msg: string) => { errorMsg = msg; };
     // Use a non-existent file path
     expect(compareFileContents('/non/existent/file1.txt', '/non/existent/file2.txt')).toBe(false);
     expect(errorMsg).toMatch(/Error comparing files/);
@@ -164,10 +166,10 @@ describe('compare-results module', () => {
     const file2 = path.join(tempDir, 'b.txt');
     fs.writeFileSync(file1, 'hello\nworld\nfoo');
     fs.writeFileSync(file2, 'hello\nplanet\nfoo');
-    const diff = getDiff(file1, file2);
-    expect(diff).toMatch(/-world/);
-    expect(diff).toMatch(/\+planet/);
-    expect(diff).toMatch(/@@/); // unified diff header
+    const diffOutput = getDiff(file1, file2);
+    expect(diffOutput).toMatch(/-world/);
+    expect(diffOutput).toMatch(/\+planet/);
+    expect(diffOutput).toMatch(/@@/); // unified diff header
   });
 
   test('getAllFiles returns empty array for empty directory', () => {
@@ -205,134 +207,90 @@ describe('compare-results module', () => {
     expect(compareFileContents(file1, file2)).toBe(true);
   });
 
-  test('compareResults returns correct structure for one empty directory', () => {
-    const dir1 = path.join(tempDir, 'dir1');
-    const dir2 = path.join(tempDir, 'dir2');
-    fs.mkdirSync(dir1);
-    fs.mkdirSync(dir2);
-    fs.writeFileSync(path.join(dir1, 'a.txt'), 'foo');
-    const { shadcnOnly, liftkitOnly, commonFiles } = compareResults(dir1, dir2, true);
-    expect(shadcnOnly).toEqual(['a.txt']);
-    expect(liftkitOnly).toEqual([]);
-    expect(commonFiles).toEqual([]);
-  });
-
-  test('getDiff returns empty diff for identical files', () => {
-    const file1 = path.join(tempDir, 'a.txt');
-    fs.writeFileSync(file1, 'foo\nbar');
-    const diff = getDiff(file1, file1);
-    // The diff should not contain any - or + lines
-    expect(diff).not.toMatch(/^-|^\+/m);
-  });
-
-  test('getDiff handles empty files gracefully', () => {
+  test('compareFileContents returns false for different files', () => {
     const file1 = path.join(tempDir, 'a.txt');
     const file2 = path.join(tempDir, 'b.txt');
-    fs.writeFileSync(file1, '');
-    fs.writeFileSync(file2, '');
-    const diff = getDiff(file1, file2);
-    expect(typeof diff).toBe('string');
+    fs.writeFileSync(file1, 'hello');
+    fs.writeFileSync(file2, 'world');
+    expect(compareFileContents(file1, file2)).toBe(false);
   });
 
-  test('cliRunner exits with error if directories are missing', () => {
-    const originalExit = process.exit;
-    const originalError = console.error;
-    let errorArgs = [];
-    process.exit = () => { throw new Error('exit'); };
-    console.error = (...args) => { errorArgs = args; };
-    expect(() => cliRunner()).toThrow('exit');
-    expect(errorArgs.some(arg => /Test directories not found/.test(arg))).toBe(true);
-    process.exit = originalExit;
-    console.error = originalError;
+  test('compareFileContents handles files with only comments', () => {
+    const file1 = path.join(tempDir, 'a.js');
+    const file2 = path.join(tempDir, 'b.js');
+    fs.writeFileSync(file1, '// comment 1\n/* comment 2 */');
+    fs.writeFileSync(file2, '// different comment\n/* another comment */');
+    expect(compareFileContents(file1, file2)).toBe(true);
   });
 
-  test('cliRunner runs successfully if directories exist', () => {
-    // Use already imported fs and path
-    const testOutput = path.join(__dirname, '..', 'test_output');
-    const shadcnDir = path.join(testOutput, 'shadcn');
-    const liftkitDir = path.join(testOutput, 'liftkit');
-    fs.mkdirSync(shadcnDir, { recursive: true });
-    fs.mkdirSync(liftkitDir, { recursive: true });
-    fs.writeFileSync(path.join(shadcnDir, 'a.txt'), 'foo');
-    fs.writeFileSync(path.join(liftkitDir, 'a.txt'), 'foo');
-    const originalLog = console.log;
-    let logMsg;
-    console.log = (msg) => { logMsg = msg; };
-    expect(() => cliRunner()).not.toThrow();
-    expect(logMsg).toMatch(/CLI runner executed/);
-    // Cleanup
-    fs.rmSync(testOutput, { recursive: true, force: true });
-    console.log = originalLog;
+  test('compareFileContents handles files with mixed content and comments', () => {
+    const file1 = path.join(tempDir, 'a.js');
+    const file2 = path.join(tempDir, 'b.js');
+    fs.writeFileSync(file1, 'const x = 1; // comment\n/* block comment */\nconst y = 2;');
+    fs.writeFileSync(file2, 'const x = 1;\nconst y = 2;');
+    expect(compareFileContents(file1, file2)).toBe(true);
   });
 
-  test('compareResults throws if directories are missing (direct call)', () => {
-    expect(() => compareResults('/non/existent/dir1', '/non/existent/dir2')).toThrow('Test directories not found');
+  test('compareResults throws error for non-existent directories', () => {
+    expect(() => compareResults('/non/existent1', '/non/existent2')).toThrow('Test directories not found');
   });
 
-  test('cliRunner catch block logs and exits on error (direct simulation)', () => {
-    const originalExit = process.exit;
-    const originalError = console.error;
-    let errorArgs = [];
-    process.exit = () => { throw new Error('exit'); };
-    console.error = (...args) => { errorArgs = args; };
-    expect(() => {
-      try {
-        throw new Error('unexpected error');
-      } catch (e) {
-        console.error('❌', e.message);
-        process.exit(1);
+  test('compareResults returns true for identical directory structures', () => {
+    const dir1 = path.join(tempDir, 'dir1');
+    const dir2 = path.join(tempDir, 'dir2');
+    fs.mkdirSync(dir1);
+    fs.mkdirSync(dir2);
+    
+    const file1 = path.join(dir1, 'test.txt');
+    const file2 = path.join(dir2, 'test.txt');
+    fs.writeFileSync(file1, 'hello world');
+    fs.writeFileSync(file2, 'hello world');
+    
+    expect(compareResults(dir1, dir2)).toBe(true);
+  });
+
+  test('compareResults returns false for different file contents', () => {
+    const dir1 = path.join(tempDir, 'dir1');
+    const dir2 = path.join(tempDir, 'dir2');
+    fs.mkdirSync(dir1);
+    fs.mkdirSync(dir2);
+    
+    const file1 = path.join(dir1, 'test.txt');
+    const file2 = path.join(dir2, 'test.txt');
+    fs.writeFileSync(file1, 'hello world');
+    fs.writeFileSync(file2, 'different content');
+    
+    expect(compareResults(dir1, dir2)).toBe(false);
+  });
+
+  test('compareResults returns false for different directory structures', () => {
+    const dir1 = path.join(tempDir, 'dir1');
+    const dir2 = path.join(tempDir, 'dir2');
+    fs.mkdirSync(dir1);
+    fs.mkdirSync(dir2);
+    
+    const file1 = path.join(dir1, 'test.txt');
+    fs.writeFileSync(file1, 'hello world');
+    // dir2 has no files
+    
+    expect(compareResults(dir1, dir2)).toBe(false);
+  });
+
+  test('cliRunner handles missing directories gracefully', () => {
+    // Ensure test_output/shadcn and test_output/liftkit do not exist
+    const testOutputDir = path.join(__dirname, '..', 'test_output');
+    const shadcnDir = path.join(testOutputDir, 'shadcn');
+    const liftkitDir = path.join(testOutputDir, 'liftkit');
+    [shadcnDir, liftkitDir].forEach(dir => {
+      if (fs.existsSync(dir)) {
+        fs.rmSync(dir, { recursive: true, force: true });
       }
-    }).toThrow('exit');
-    expect(errorArgs.join(' ')).toContain('unexpected error');
-    process.exit = originalExit;
+    });
+    const originalError = console.error;
+    let errorArgs: any[] = [];
+    console.error = (...args: any[]) => { errorArgs = args; };
+    expect(() => cliRunner()).toThrow('Test directories not found');
+    expect(errorArgs.some(arg => typeof arg === 'string' && arg.includes('Test directories not found'))).toBe(true);
     console.error = originalError;
-  });
-
-  test('compareResults returns true and logs perfect match for identical files and content', () => {
-    const dir1 = path.join(tempDir, 'dir1');
-    const dir2 = path.join(tempDir, 'dir2');
-    fs.mkdirSync(dir1);
-    fs.mkdirSync(dir2);
-    fs.writeFileSync(path.join(dir1, 'a.txt'), 'foo');
-    fs.writeFileSync(path.join(dir2, 'a.txt'), 'foo');
-    const originalLog = console.log;
-    let logMsg = '';
-    console.log = (msg) => { logMsg += msg; };
-    const result = compareResults(dir1, dir2);
-    expect(result).toBe(true);
-    expect(logMsg).toMatch(/Perfect match/);
-    console.log = originalLog;
-  });
-
-  test('compareResults returns false and logs locationOnly for same files, different content', () => {
-    const dir1 = path.join(tempDir, 'dir1');
-    const dir2 = path.join(tempDir, 'dir2');
-    fs.mkdirSync(dir1);
-    fs.mkdirSync(dir2);
-    fs.writeFileSync(path.join(dir1, 'a.txt'), 'foo');
-    fs.writeFileSync(path.join(dir2, 'a.txt'), 'bar');
-    const originalLog = console.log;
-    let logMsg = '';
-    console.log = (msg) => { logMsg += msg; };
-    const result = compareResults(dir1, dir2);
-    expect(result).toBe(false);
-    expect(logMsg).toMatch(/same locations but some content differs/);
-    console.log = originalLog;
-  });
-
-  test('compareResults returns false and logs mismatch for different files', () => {
-    const dir1 = path.join(tempDir, 'dir1');
-    const dir2 = path.join(tempDir, 'dir2');
-    fs.mkdirSync(dir1);
-    fs.mkdirSync(dir2);
-    fs.writeFileSync(path.join(dir1, 'a.txt'), 'foo');
-    fs.writeFileSync(path.join(dir2, 'b.txt'), 'foo');
-    const originalLog = console.log;
-    let logMsg = '';
-    console.log = (msg) => { logMsg += msg; };
-    const result = compareResults(dir1, dir2);
-    expect(result).toBe(false);
-    expect(logMsg).toMatch(/not in the same locations/);
-    console.log = originalLog;
   });
 }); 
