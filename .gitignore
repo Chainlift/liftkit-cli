@@ -5,5 +5,5 @@ components.json
 test_output/
 .direnv
 coverage/
-.stryker-tmp/sandbox-Wn030u
+.stryker-tmp/
 reports/mutation
