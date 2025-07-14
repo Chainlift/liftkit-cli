@@ -7,3 +7,4 @@ test_output/
 coverage/
 .stryker-tmp/
 reports/mutation
+docs

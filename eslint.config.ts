@@ -7,6 +7,7 @@ import {defineConfig} from 'eslint/config';
 export default defineConfig([
 	{
 		ignores: [
+			'docs',
 			'test_output',
 			'dist',
 			'.stryker*',
