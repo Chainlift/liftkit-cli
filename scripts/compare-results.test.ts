@@ -54,9 +54,12 @@ describe('compare-results module', () => {
   });
 
   test('getRelativePath returns correct relative path', () => {
-    const base = '/foo/bar';
-    const file = '/foo/bar/baz/qux.txt';
-    expect(getRelativePath(file, base)).toBe('baz/qux.txt');
+    const base = path.join('/foo/bar');
+    const file = path.join('/foo/bar', 'baz', 'qux.txt');
+    // Always compare normalized paths for cross-platform compatibility
+    expect(path.normalize(getRelativePath(file, base))).toBe(
+      path.normalize(path.join('baz', 'qux.txt')),
+    );
   });
 
   test('getRelativePath uses path.relative for robust normalization', () => {
@@ -64,7 +67,9 @@ describe('compare-results module', () => {
     const base = path.join('/foo/bar/');
     const file = path.join('/foo/bar', 'baz', 'qux.txt');
     // Should always return 'baz/qux.txt' regardless of trailing slash or OS
-    expect(getRelativePath(file, base)).toBe(path.join('baz', 'qux.txt'));
+    expect(path.normalize(getRelativePath(file, base))).toBe(
+      path.normalize(path.join('baz', 'qux.txt')),
+    );
   });
 
   test('getAllFiles skips unreadable files and does not throw', () => {
@@ -96,6 +101,11 @@ describe('compare-results module', () => {
   });
 
   test('getAllFiles skips symlinks and does not recurse into them', () => {
+    // Symlinks require admin on Windows, so skip if on Windows
+    if (process.platform === 'win32') {
+      console.warn('Skipping symlink test on Windows');
+      return;
+    }
     const subDir = path.join(tempDir, 'sub');
     fs.mkdirSync(subDir);
     const file1 = path.join(subDir, 'a.txt');
