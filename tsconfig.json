@@ -1,6 +1,8 @@
 {
   "extends": "@sindresorhus/tsconfig",
   "compilerOptions": {
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "outDir": "dist",
     "baseUrl": "src",
     "paths": {
