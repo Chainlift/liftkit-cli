@@ -228,87 +228,216 @@ export class RegistryProcessor {
       return path.resolve(options.baseDir!, fileName);
     }
   }
-
   private replaceRegistryPaths(content: string): string {
-    // Replace registry paths with local paths
+    if (!content) return content;
+
     let processedContent = content;
 
-    // Handle all possible registry path patterns with different quote styles
-    const patterns = [
-      // registry/nextjs/components/ -> @/components
-      {
-        from: /from ['"]@\/registry\/nextjs\/components\//g,
-        to: "from '@/components/",
-      },
-      {
-        from: /from ['"]registry\/nextjs\/components\//g,
-        to: "from '@/components/",
-      },
-      {
-        from: /import ['"]@\/registry\/nextjs\/components\//g,
-        to: "import '@/components/",
-      },
-      {
-        from: /import ['"]registry\/nextjs\/components\//g,
-        to: "import '@/components/",
-      },
+    // Default directory mappings - can be overridden by components.json
+    const defaultMappings: Array<{directoryName: string; targetAlias: string}> =
+      [
+        {directoryName: 'components', targetAlias: '@/components'},
+        {directoryName: 'lib', targetAlias: '@/lib'},
+        {directoryName: 'utils', targetAlias: '@/lib'},
+        {directoryName: 'blocks', targetAlias: '@/components/blocks'},
+        {directoryName: 'hooks', targetAlias: '@/hooks'},
+        {directoryName: 'ui', targetAlias: '@/components/ui'},
+      ];
 
-      // registry/universal/lib/ -> @/lib
-      {from: /from ['"]@\/registry\/universal\/lib\//g, to: "from '@/lib/"},
-      {from: /from ['"]registry\/universal\/lib\//g, to: "from '@/lib/"},
-      {from: /import ['"]@\/registry\/universal\/lib\//g, to: "import '@/lib/"},
-      {from: /import ['"]registry\/universal\/lib\//g, to: "import '@/lib/"},
+    // Get directory mappings from components.json or use defaults
+    let directoryMappings = defaultMappings;
 
-      // registry/nextjs/lib/ -> @/lib
-      {from: /from ['"]@\/registry\/nextjs\/lib\//g, to: "from '@/lib/"},
-      {from: /from ['"]registry\/nextjs\/lib\//g, to: "from '@/lib/"},
-      {from: /import ['"]@\/registry\/nextjs\/lib\//g, to: "import '@/lib/"},
-      {from: /import ['"]registry\/nextjs\/lib\//g, to: "import '@/lib/"},
+    // If components.json is loaded, use its aliases
+    if (this.componentsConfig?.aliases) {
+      const aliases = this.componentsConfig.aliases;
+      const mappings: Array<{directoryName: string; targetAlias: string}> = [];
 
-      // registry/universal/ -> @/lib
-      {from: /from ['"]@\/registry\/universal\//g, to: "from '@/lib/"},
-      {from: /from ['"]registry\/universal\//g, to: "from '@/lib/"},
-      {from: /import ['"]@\/registry\/universal\//g, to: "import '@/lib/"},
-      {from: /import ['"]registry\/universal\//g, to: "import '@/lib/"},
+      // Create mappings based on components.json aliases
+      Object.entries(aliases).forEach(([aliasKey, aliasValue]) => {
+        // Map the alias key to the directory name it represents
+        let directoryName = aliasKey;
 
-      // CSS @import statements
-      {
-        from: /@import ['"]@\/registry\/nextjs\/components\//g,
-        to: "@import '@/components/",
-      },
-      {
-        from: /@import ['"]registry\/nextjs\/components\//g,
-        to: "@import '@/components/",
-      },
-      {
-        from: /@import ['"]@\/registry\/universal\/lib\//g,
-        to: "@import '@/lib/",
-      },
-      {from: /@import ['"]registry\/universal\/lib\//g, to: "@import '@/lib/"},
-      {from: /@import ['"]@\/registry\/nextjs\/lib\//g, to: "@import '@/lib/"},
-      {from: /@import ['"]registry\/nextjs\/lib\//g, to: "@import '@/lib/"},
-      {from: /@import ['"]@\/registry\/universal\//g, to: "@import '@/lib/"},
-      {from: /@import ['"]registry\/universal\//g, to: "@import '@/lib/"},
-    ];
+        // Handle common alias variations
+        switch (aliasKey) {
+          case 'ui':
+            directoryName = 'components'; // ui alias typically maps to components directory
+            break;
+          case 'utils':
+            directoryName = 'lib'; // utils alias typically maps to lib directory
+            break;
+          default:
+            directoryName = aliasKey;
+            break;
+        }
 
-    // Apply all patterns
+        mappings.push({directoryName, targetAlias: aliasValue});
+
+        // Also add the original alias key if it's different from directory name
+        if (directoryName !== aliasKey) {
+          mappings.push({directoryName: aliasKey, targetAlias: aliasValue});
+        }
+      });
+
+      if (mappings.length > 0) {
+        directoryMappings = mappings;
+      }
+    }
+
+    // Generate patterns dynamically based on directory mappings
+    const patterns: Array<{from: RegExp; to: string}> = [];
+
+    directoryMappings.forEach(mapping => {
+      const {directoryName, targetAlias} = mapping;
+
+      // Create a single flexible regex pattern that matches both with and without @/
+      // Pattern matches: (@/)?registry/[anything]/directoryName/
+      const registryPattern = `(?:@\\/)?registry\\/[^/]+\\/${directoryName}`;
+
+      // Generate all import/from pattern variations
+      const importPatterns: Array<{from: RegExp; to: string}> = [
+        // ES6 from statements
+        {
+          from: new RegExp(`from ['"]${registryPattern}\\/`, 'g'),
+          to: `from '${targetAlias}/`,
+        },
+
+        // ES6 import statements
+        {
+          from: new RegExp(`import ['"]${registryPattern}\\/`, 'g'),
+          to: `import '${targetAlias}/`,
+        },
+
+        // CSS @import statements
+        {
+          from: new RegExp(`@import ['"]${registryPattern}\\/`, 'g'),
+          to: `@import '${targetAlias}/`,
+        },
+
+        // Dynamic imports
+        {
+          from: new RegExp(`import\\(['"]${registryPattern}\\/`, 'g'),
+          to: `import('${targetAlias}/`,
+        },
+
+        // require statements
+        {
+          from: new RegExp(`require\\(['"]${registryPattern}\\/`, 'g'),
+          to: `require('${targetAlias}/`,
+        },
+      ];
+
+      patterns.push(...importPatterns);
+    });
+
+    // Apply all generated patterns
     patterns.forEach(pattern => {
       processedContent = processedContent.replace(pattern.from, pattern.to);
     });
 
-    // Normalize quote styles to match shadcn (use double quotes for imports)
+    // Normalize quote styles to match shadcn/ui conventions (double quotes for imports)
     processedContent = processedContent.replace(
-      /from ['"]@\/([^'"]+)['"]/g,
-      'from "@/$1"',
+      /from ['"](@\/[^'"]+)['"]/g,
+      'from "$1"',
     );
 
     processedContent = processedContent.replace(
-      /import ['"]@\/([^'"]+)['"]/g,
-      'import "@/$1"',
+      /import ['"](@\/[^'"]+)['"]/g,
+      'import "$1"',
+    );
+
+    // Also normalize dynamic imports and CSS imports
+    processedContent = processedContent.replace(
+      /import\(['"](@\/[^'"]+)['"]\)/g,
+      'import("$1")',
+    );
+
+    processedContent = processedContent.replace(
+      /@import ['"](@\/[^'"]+)['"]/g,
+      '@import "$1"',
     );
 
     return processedContent;
   }
+  // private replaceRegistryPaths(content: string): string {
+  //   // Replace registry paths with local paths
+  //   let processedContent = content;
+
+  //   // Handle all possible registry path patterns with different quote styles
+  //   const patterns = [
+  //     // registry/nextjs/components/ -> @/components
+  //     {
+  //       from: /from ['"]@\/registry\/nextjs\/components\//g,
+  //       to: "from '@/components/",
+  //     },
+  //     {
+  //       from: /from ['"]registry\/nextjs\/components\//g,
+  //       to: "from '@/components/",
+  //     },
+  //     {
+  //       from: /import ['"]@\/registry\/nextjs\/components\//g,
+  //       to: "import '@/components/",
+  //     },
+  //     {
+  //       from: /import ['"]registry\/nextjs\/components\//g,
+  //       to: "import '@/components/",
+  //     },
+
+  //     // registry/universal/lib/ -> @/lib
+  //     {from: /from ['"]@\/registry\/universal\/lib\//g, to: "from '@/lib/"},
+  //     {from: /from ['"]registry\/universal\/lib\//g, to: "from '@/lib/"},
+  //     {from: /import ['"]@\/registry\/universal\/lib\//g, to: "import '@/lib/"},
+  //     {from: /import ['"]registry\/universal\/lib\//g, to: "import '@/lib/"},
+
+  //     // registry/nextjs/lib/ -> @/lib
+  //     {from: /from ['"]@\/registry\/nextjs\/lib\//g, to: "from '@/lib/"},
+  //     {from: /from ['"]registry\/nextjs\/lib\//g, to: "from '@/lib/"},
+  //     {from: /import ['"]@\/registry\/nextjs\/lib\//g, to: "import '@/lib/"},
+  //     {from: /import ['"]registry\/nextjs\/lib\//g, to: "import '@/lib/"},
+
+  //     // registry/universal/ -> @/lib
+  //     {from: /from ['"]@\/registry\/universal\//g, to: "from '@/lib/"},
+  //     {from: /from ['"]registry\/universal\//g, to: "from '@/lib/"},
+  //     {from: /import ['"]@\/registry\/universal\//g, to: "import '@/lib/"},
+  //     {from: /import ['"]registry\/universal\//g, to: "import '@/lib/"},
+
+  //     // CSS @import statements
+  //     {
+  //       from: /@import ['"]@\/registry\/nextjs\/components\//g,
+  //       to: "@import '@/components/",
+  //     },
+  //     {
+  //       from: /@import ['"]registry\/nextjs\/components\//g,
+  //       to: "@import '@/components/",
+  //     },
+  //     {
+  //       from: /@import ['"]@\/registry\/universal\/lib\//g,
+  //       to: "@import '@/lib/",
+  //     },
+  //     {from: /@import ['"]registry\/universal\/lib\//g, to: "@import '@/lib/"},
+  //     {from: /@import ['"]@\/registry\/nextjs\/lib\//g, to: "@import '@/lib/"},
+  //     {from: /@import ['"]registry\/nextjs\/lib\//g, to: "@import '@/lib/"},
+  //     {from: /@import ['"]@\/registry\/universal\//g, to: "@import '@/lib/"},
+  //     {from: /@import ['"]registry\/universal\//g, to: "@import '@/lib/"},
+  //   ];
+
+  //   // Apply all patterns
+  //   patterns.forEach(pattern => {
+  //     processedContent = processedContent.replace(pattern.from, pattern.to);
+  //   });
+
+  //   // Normalize quote styles to match shadcn (use double quotes for imports)
+  //   processedContent = processedContent.replace(
+  //     /from ['"]@\/([^'"]+)['"]/g,
+  //     'from "@/$1"',
+  //   );
+
+  //   processedContent = processedContent.replace(
+  //     /import ['"]@\/([^'"]+)['"]/g,
+  //     'import "@/$1"',
+  //   );
+
+  //   return processedContent;
+  // }
 
   private async installDependencies(
     dependencies: string[],

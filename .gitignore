@@ -8,3 +8,4 @@ coverage/
 .stryker-tmp/
 reports/mutation
 docs
+src
