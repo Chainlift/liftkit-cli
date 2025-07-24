@@ -28,7 +28,7 @@
     "test:compare": "node --loader ts-node/esm scripts/compare-results.ts",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
-    "prepare": "husky install",
+    "prepare": "husky",
     "docs": "typedoc --out docs source"
   },
   "files": [
