@@ -8,12 +8,27 @@ import * as path from 'node:path';
 import {execSync} from 'node:child_process';
 import {processRegistryWithDependencies} from './registry-process.js';
 import {type RegistryItem} from './registry-types.js';
+import {question} from './base.js';
 
 interface ProcessedFile {
   originalPath: string;
   processedPath: string;
   content: string;
   processedContent: string;
+}
+
+interface PendingFile {
+  originalPath: string;
+  targetPath: string;
+  content: string;
+  processedContent: string;
+  exists: boolean;
+  identical: boolean;
+}
+
+interface FileConflict {
+  file: PendingFile;
+  existingContent: string;
 }
 
 interface ProcessedRegistryItem {
@@ -29,6 +44,7 @@ interface RegistryProcessorOptions {
   preserveSubdirectories?: boolean;
   replaceRegistryPaths?: boolean;
   installDependencies?: boolean;
+  skipConflicts?: boolean; // New option to skip conflict checking
 }
 
 interface ComponentsConfig {
@@ -54,6 +70,7 @@ export class RegistryProcessor {
       preserveSubdirectories: true,
       replaceRegistryPaths: true,
       installDependencies: true,
+      skipConflicts: false,
       ...options,
     };
     this.fs = fsModule;
@@ -99,8 +116,26 @@ export class RegistryProcessor {
 
     // Process files
     if (item.files && item.files.length > 0) {
+      // First, collect all pending files without writing them
+      const pendingFiles = await this.collectPendingFiles(
+        item.files,
+        finalOptions,
+      );
+
+      // Check for conflicts if not skipping
+      if (!finalOptions.skipConflicts) {
+        const conflicts = await this.checkFileConflicts(pendingFiles);
+        if (conflicts.length > 0) {
+          const shouldProceed = await this.handleFileConflicts(conflicts);
+          if (!shouldProceed) {
+            throw new Error('User cancelled file overwrite');
+          }
+        }
+      }
+
+      // Now write all files
       const processed = await Promise.all(
-        item.files.map(file => this.processFile(file, finalOptions)),
+        pendingFiles.map(pendingFile => this.writePendingFile(pendingFile)),
       );
       processed.forEach(processedFile => {
         switch (processedFile) {
@@ -143,6 +178,156 @@ export class RegistryProcessor {
       npmDependencies,
       devDependencies,
     };
+  }
+
+  private async collectPendingFiles(
+    files: import('./registry-types.js').RegistryFile[],
+    options: RegistryProcessorOptions,
+  ): Promise<PendingFile[]> {
+    const pendingFiles: PendingFile[] = [];
+
+    for (const file of files) {
+      if (!file.content) {
+        console.log(`Skipping file ${file.path} - no content`);
+        continue;
+      }
+
+      const targetPath = this.resolveTargetPath(file.path, options);
+      const processedContent = this.replaceRegistryPaths(file.content);
+      const exists = this.fs.existsSync(targetPath);
+
+      let identical = false;
+      if (exists) {
+        try {
+          const existingContent = this.fs.readFileSync(targetPath, 'utf-8');
+          identical = this.compareFileContents(
+            existingContent,
+            processedContent,
+          );
+        } catch (error) {
+          console.warn(`Could not read existing file ${targetPath}:`, error);
+        }
+      }
+
+      pendingFiles.push({
+        originalPath: file.path,
+        targetPath,
+        content: file.content,
+        processedContent,
+        exists,
+        identical,
+      });
+    }
+
+    return pendingFiles;
+  }
+
+  private async checkFileConflicts(
+    pendingFiles: PendingFile[],
+  ): Promise<FileConflict[]> {
+    const conflicts: FileConflict[] = [];
+
+    for (const pendingFile of pendingFiles) {
+      if (pendingFile.exists && !pendingFile.identical) {
+        try {
+          const existingContent = this.fs.readFileSync(
+            pendingFile.targetPath,
+            'utf-8',
+          );
+          conflicts.push({
+            file: pendingFile,
+            existingContent,
+          });
+        } catch (error) {
+          console.warn(
+            `Could not read existing file ${pendingFile.targetPath}:`,
+            error,
+          );
+        }
+      }
+    }
+
+    return conflicts;
+  }
+
+  private async handleFileConflicts(
+    conflicts: FileConflict[],
+  ): Promise<boolean> {
+    console.log(
+      '\n⚠️  The following files already exist and will be overwritten:',
+    );
+
+    for (const conflict of conflicts) {
+      const relativePath = path.relative(
+        this.options.baseDir!,
+        conflict.file.targetPath,
+      );
+      console.log(`  - ${relativePath}`);
+    }
+
+    const answer = await question(
+      '\nDo you want to proceed with overwriting these files? (y/N): ',
+    );
+    return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+  }
+
+  private async writePendingFile(
+    pendingFile: PendingFile,
+  ): Promise<ProcessedFile | null> {
+    const dir = path.dirname(pendingFile.targetPath);
+
+    // Track processed URL
+    this.processedUrls.add(pendingFile.originalPath);
+
+    // Ensure directory exists
+    switch (this.fs.existsSync(dir)) {
+      case false:
+        this.fs.mkdirSync(dir, {recursive: true});
+        break;
+      default:
+        break;
+    }
+
+    // Write file
+    this.fs.writeFileSync(pendingFile.targetPath, pendingFile.processedContent);
+
+    // Log status
+    if (pendingFile.exists) {
+      if (pendingFile.identical) {
+        console.log(
+          `⏭️  Skipped ${path.relative(
+            this.options.baseDir!,
+            pendingFile.targetPath,
+          )} (identical content)`,
+        );
+      } else {
+        console.log(
+          `✏️  Updated ${path.relative(
+            this.options.baseDir!,
+            pendingFile.targetPath,
+          )}`,
+        );
+      }
+    } else {
+      console.log(
+        `📄 Created ${path.relative(
+          this.options.baseDir!,
+          pendingFile.targetPath,
+        )}`,
+      );
+    }
+
+    return {
+      originalPath: pendingFile.originalPath,
+      processedPath: pendingFile.targetPath,
+      content: pendingFile.content,
+      processedContent: pendingFile.processedContent,
+    };
+  }
+
+  private compareFileContents(content1: string, content2: string): boolean {
+    // Simple content comparison - can be enhanced with more sophisticated diffing
+    return content1.trim() === content2.trim();
   }
 
   private async processFile(

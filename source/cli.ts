@@ -19,6 +19,10 @@ program
 program
   .command('add <component>')
   .description('Download a component from the registry')
+  .option(
+    '--force, --skip-conflicts',
+    'Skip file conflict checking and overwrite existing files',
+  )
   .action(addCommand);
 
 program.parseAsync();
