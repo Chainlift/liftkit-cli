@@ -39,6 +39,12 @@ export default [
     files: ['**/*.{ts,mts,cts}'],
   })),
   {
+    files: ['**/*.{ts,mts,cts}'],
+    rules: {
+      'no-ternary': 'error',
+    },
+  },
+  {
     files: ['**/*.json'],
     plugins: {json},
     language: 'json/json',
