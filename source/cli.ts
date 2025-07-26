@@ -14,6 +14,7 @@ program
 program
   .command('init')
   .description('Downloads essential files')
+  .option('--yes', 'Skip all confirmations and use default "yes" answers')
   .action(initCommand);
 
 program
