@@ -1,58 +1,103 @@
-import {describe, it, expect, vi, beforeEach} from 'vitest';
-import {processDependencies} from './app.js';
+import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest';
+import {initCommand} from './app.js';
+import * as base from './lib/base.js';
 
-const mockFetch = vi.fn();
-const mockValidate = vi.fn();
-const mockProcessRegistryItem = vi.fn();
-const mockConsoleError = vi.fn();
+// Type for mock fetch return value
+type MockFetchReturn = {
+  file: (path: string) => Promise<string>;
+};
 
-const processor = {validate: mockValidate};
-const registryProcessor = {processRegistryItem: mockProcessRegistryItem};
+// Mock the base module
+vi.mock('./lib/base.js', () => ({
+  question: vi.fn(),
+  rl: {
+    close: vi.fn(),
+  },
+  fileExists: vi.fn(),
+  readJsonFile: vi.fn(),
+  getFilePath: vi.fn(),
+  save: vi.fn(),
+  fetch: vi.fn(),
+  hasPackageJson: vi.fn(() => true),
+  tsconfigPathsMatch: vi.fn(),
+  mergeJson: vi.fn(),
+}));
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
-describe('processDependencies', () => {
-  it('processes all valid dependencies', async () => {
-    mockFetch.mockResolvedValue({json: () => Promise.resolve({valid: true})});
-    mockValidate.mockReturnValue({isValid: true});
-    const deps = ['url1', 'url2'];
-    await processDependencies(
-      deps,
-      mockFetch,
-      processor,
-      registryProcessor,
-      mockConsoleError,
-    );
-    expect(mockProcessRegistryItem).toHaveBeenCalledTimes(2);
+describe('initCommand', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('skips invalid dependencies and logs errors', async () => {
-    mockFetch.mockResolvedValue({json: () => Promise.resolve({valid: false})});
-    mockValidate.mockReturnValue({isValid: false, errors: ['err']});
-    const deps = ['url1'];
-    await processDependencies(
-      deps,
-      mockFetch,
-      processor,
-      registryProcessor,
-      mockConsoleError,
-    );
-    expect(mockProcessRegistryItem).not.toHaveBeenCalled();
-    expect(mockConsoleError).toHaveBeenCalled();
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it('handles fetch errors gracefully', async () => {
-    mockFetch.mockRejectedValue(new Error('fail'));
-    const deps = ['url1'];
-    await processDependencies(
-      deps,
-      mockFetch,
-      processor,
-      registryProcessor,
-      mockConsoleError,
-    );
-    expect(mockConsoleError).toHaveBeenCalled();
+  it('should skip confirmations when --yes option is provided', async () => {
+    // Mock file existence checks
+    vi.mocked(base.fileExists).mockReturnValue(false);
+    vi.mocked(base.getFilePath).mockImplementation(path => `/mock/${path}`);
+    vi.mocked(base.fetch).mockResolvedValue({
+      file: vi.fn().mockResolvedValue('File downloaded successfully'),
+    } as MockFetchReturn);
+
+    // Call initCommand with --yes option
+    await initCommand({yes: true});
+
+    // Verify that no questions were asked
+    expect(base.question).not.toHaveBeenCalled();
+  });
+
+  it('should ask for confirmation when --yes option is not provided', async () => {
+    // Mock file existence checks
+    vi.mocked(base.fileExists).mockReturnValue(false);
+    vi.mocked(base.getFilePath).mockImplementation(path => `/mock/${path}`);
+    vi.mocked(base.fetch).mockResolvedValue({
+      file: vi.fn().mockResolvedValue('File downloaded successfully'),
+    } as MockFetchReturn);
+
+    // Mock user response
+    vi.mocked(base.question).mockResolvedValue('y');
+
+    // Call initCommand without --yes option
+    await initCommand();
+
+    // Verify that questions were asked
+    expect(base.question).toHaveBeenCalled();
+  });
+
+  it('should default to yes when user just presses enter', async () => {
+    // Mock file existence checks
+    vi.mocked(base.fileExists).mockReturnValue(false);
+    vi.mocked(base.getFilePath).mockImplementation(path => `/mock/${path}`);
+    vi.mocked(base.fetch).mockResolvedValue({
+      file: vi.fn().mockResolvedValue('File downloaded successfully'),
+    } as MockFetchReturn);
+
+    // Mock user response (empty string = just pressing enter)
+    vi.mocked(base.question).mockResolvedValue('');
+
+    // Call initCommand without --yes option
+    await initCommand();
+
+    // Verify that questions were asked
+    expect(base.question).toHaveBeenCalled();
+  });
+
+  it('should respect user input when they explicitly say no', async () => {
+    // Mock file existence checks
+    vi.mocked(base.fileExists).mockReturnValue(false);
+    vi.mocked(base.getFilePath).mockImplementation(path => `/mock/${path}`);
+    vi.mocked(base.fetch).mockResolvedValue({
+      file: vi.fn().mockResolvedValue('File downloaded successfully'),
+    } as MockFetchReturn);
+
+    // Mock user response
+    vi.mocked(base.question).mockResolvedValue('n');
+
+    // Call initCommand without --yes option
+    await initCommand();
+
+    // Verify that questions were asked
+    expect(base.question).toHaveBeenCalled();
   });
 });

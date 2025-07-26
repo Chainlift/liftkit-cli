@@ -26,6 +26,12 @@ Set up your Next.js repo with sensible defaults using:
 npx liftkit init
 ```
 
+By default, all prompts will default to "yes" (just press Enter to accept). Use the `--yes` flag to skip all confirmations:
+
+```bash
+npx liftkit init --yes
+```
+
 ### Add Components
 
 Use the `add` command to import components from a remote LiftKit JSON manifest:

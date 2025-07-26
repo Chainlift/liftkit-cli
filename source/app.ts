@@ -29,7 +29,7 @@ interface PackageJson {
 // type IntentionalError = number;
 // const shouldBeNumber: IntentionalError = "this is a string, not a number";
 
-export async function initCommand() {
+export async function initCommand(options: {yes?: boolean} = {}) {
   try {
     // First handle tsconfig.json merging
     const tsconfigPath = getFilePath('tsconfig.json');
@@ -57,10 +57,18 @@ export async function initCommand() {
           JSON.stringify(existingTsConfig, null, 2),
           JSON.stringify(mergedConfig, null, 2),
         );
-        const answer = await question(
-          '\nDo you want to apply these changes? (y/N): ',
-        );
-        switch (answer.toLowerCase() === 'y') {
+        let answer: string;
+        switch (options.yes) {
+          case true:
+            answer = 'y';
+            break;
+          default:
+            answer = await question(
+              '\nDo you want to apply these changes? (Y/n): ',
+            );
+            break;
+        }
+        switch (answer.toLowerCase() !== 'n') {
           case true: {
             save('tsconfig.json', JSON.stringify(mergedConfig, null, 2));
             console.log('\x1b[32m%s\x1b[0m', '\u2713 Updated tsconfig.json');
@@ -75,10 +83,18 @@ export async function initCommand() {
       }
       default: {
         // If no tsconfig.json exists, create one with our config
-        const answer2 = await question(
-          'No tsconfig.json found. Create one with recommended settings? (y/N): ',
-        );
-        switch (answer2.toLowerCase() === 'y') {
+        let answer2: string;
+        switch (options.yes) {
+          case true:
+            answer2 = 'y';
+            break;
+          default:
+            answer2 = await question(
+              'No tsconfig.json found. Create one with recommended settings? (Y/n): ',
+            );
+            break;
+        }
+        switch (answer2.toLowerCase() !== 'n') {
           case true: {
             save('tsconfig.json', JSON.stringify(config.tsconfigjson, null, 2));
             console.log('\x1b[32m%s\x1b[0m', '\u2713 Created tsconfig.json');
@@ -104,10 +120,18 @@ export async function initCommand() {
             !pkg.scripts['add'] ||
             pkg.scripts['add'] !== 'liftkit add')
         ) {
-          const answer3 = await question(
-            'Add an "add" script to package.json ("liftkit add")? (y/N): ',
-          );
-          switch (answer3.toLowerCase() === 'y') {
+          let answer3: string;
+          switch (options.yes) {
+            case true:
+              answer3 = 'y';
+              break;
+            default:
+              answer3 = await question(
+                'Add an "add" script to package.json ("liftkit add")? (Y/n): ',
+              );
+              break;
+          }
+          switch (answer3.toLowerCase() !== 'n') {
             case true:
               pkg.scripts = pkg.scripts || {};
               pkg.scripts['add'] = 'liftkit add';
