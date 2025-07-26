@@ -164,7 +164,10 @@ export async function initCommand() {
   }
 }
 
-export async function addCommand(component: string) {
+export async function addCommand(
+  component: string,
+  options: {force?: boolean; skipConflicts?: boolean} = {},
+) {
   switch (hasPackageJson() === false) {
     case true:
       rl.close();
@@ -181,6 +184,7 @@ export async function addCommand(component: string) {
       preserveSubdirectories: true,
       replaceRegistryPaths: true,
       installDependencies: true,
+      skipConflicts: options.force || options.skipConflicts,
     });
 
     await registryProcessor.initialize();
@@ -273,6 +277,14 @@ export async function addCommand(component: string) {
       console.log(chalk.gray(`Dependencies installed: ${allDeps.join(', ')}`));
     }
   } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === 'User cancelled file overwrite'
+    ) {
+      console.log(chalk.yellow('Operation cancelled by user'));
+      process.exit(0);
+    }
+
     console.error(chalk.red('Error adding component:'));
     console.error(chalk.red('Error details:'), error);
     if (error instanceof Error) {
