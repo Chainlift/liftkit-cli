@@ -52,8 +52,13 @@ export const extractPropertyNames = (schema: RegistrySchema): string[] => {
   > as string[];
 };
 
-export const extractRequired = (schema: RegistrySchema): string[] =>
-  schema.required ? schema.required.map((key: string) => key) : [];
+export const extractRequired = (schema: RegistrySchema): string[] => {
+  if (schema.required) {
+    return schema.required.map((key: string) => key);
+  } else {
+    return [];
+  }
+};
 
 export const extractPropertyDetails = (
   schema: RegistrySchema,
@@ -341,10 +346,12 @@ export const createChangePlan = (
 
   const validation = validateRegistryItem(schema, validResultingItem);
 
-  const validationIssues: {type: 'current' | 'result'; issues: string[]}[] =
-    validation.errors.length > 0
-      ? [{type: 'result', issues: validation.errors}]
-      : [];
+  let validationIssues: {type: 'current' | 'result'; issues: string[]}[];
+  if (validation.errors.length > 0) {
+    validationIssues = [{type: 'result', issues: validation.errors}];
+  } else {
+    validationIssues = [];
+  }
 
   return {
     changes,
@@ -492,8 +499,13 @@ export const createSchemaProcessor = (schema: RegistrySchema) => {
         ...currentItem,
         ...desiredChanges,
       }),
-    generateTemplate: (type?: RegistryType) =>
-      generateTemplate(type ?? 'registry:component'),
+    generateTemplate: (type?: RegistryType) => {
+      if (type) {
+        return generateTemplate(type);
+      } else {
+        return generateTemplate('registry:component');
+      }
+    },
     getSchemaInfo: () => getSchemaInfo(schema),
     getInfo: () => getSchemaInfo(schema),
     getTypes: () => getRegistryTypes(schema) as RegistryType[],

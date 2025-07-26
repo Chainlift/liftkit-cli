@@ -339,7 +339,12 @@ function printGitDiff(oldStr: string, newStr: string) {
       (i >= oldLines.length || oldLines[i] !== newLines[j])
     ) {
       // Start of a chunk of additions
-      const contextIdx = j > 0 ? j : null;
+      let contextIdx: number | null;
+      if (j > 0) {
+        contextIdx = j;
+      } else {
+        contextIdx = null;
+      }
       if (contextIdx !== null && contextIdx > 0) {
         console.log(`${contextIdx}  ${newLines[contextIdx - 1]}`);
       }

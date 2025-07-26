@@ -452,12 +452,14 @@ export class RegistryProcessor {
     console.log(`Installing dependencies: ${allDeps.join(', ')}`);
 
     try {
-      const installCmd =
-        devDependencies.length > 0
-          ? `npm install ${dependencies.join(
-              ' ',
-            )} && npm install -D ${devDependencies.join(' ')}`
-          : `npm install ${dependencies.join(' ')}`;
+      let installCmd: string;
+      if (devDependencies.length > 0) {
+        installCmd = `npm install ${dependencies.join(
+          ' ',
+        )} && npm install -D ${devDependencies.join(' ')}`;
+      } else {
+        installCmd = `npm install ${dependencies.join(' ')}`;
+      }
 
       execSync(installCmd, {
         cwd: this.options.baseDir,
