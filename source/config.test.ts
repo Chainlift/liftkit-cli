@@ -11,7 +11,6 @@ describe('config', () => {
     expect(config).toHaveProperty('aliases');
     expect(config.aliases).toMatchObject({
       components: '@/components',
-      utils: '@/lib/utils',
       ui: '@/components/ui',
       lib: '@/lib',
       hooks: '@/hooks',

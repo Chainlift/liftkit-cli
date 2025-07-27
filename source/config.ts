@@ -21,7 +21,6 @@ export const config: Config = {
     'https://raw.githubusercontent.com/Chainlift/liftkit-template/refs/heads/main',
   aliases: {
     components: '@/components',
-    utils: '@/lib/utils',
     ui: '@/components/ui',
     lib: '@/lib',
     hooks: '@/hooks',

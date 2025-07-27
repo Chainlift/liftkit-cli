@@ -330,49 +330,6 @@ export class RegistryProcessor {
     return content1.trim() === content2.trim();
   }
 
-  private async processFile(
-    file: import('./registry-types.js').RegistryFile,
-    options: RegistryProcessorOptions,
-  ): Promise<ProcessedFile | null> {
-    const targetPath = this.resolveTargetPath(file.path, options);
-    const dir = path.dirname(targetPath);
-    switch (true) {
-      case !file.content:
-        console.log(`Skipping file ${file.path} - no content`);
-        return null;
-      case !this.fs.existsSync(path.dirname(targetPath)):
-        this.fs.mkdirSync(path.dirname(targetPath), {recursive: true});
-        break;
-      default:
-        break;
-    }
-
-    // Track processed URL
-    this.processedUrls.add(file.path);
-
-    // Process content: only do path replacement, do not add comments or modify content otherwise
-    const processedContent = this.replaceRegistryPaths(file.content!);
-
-    // Ensure directory exists
-    switch (this.fs.existsSync(dir)) {
-      case false:
-        this.fs.mkdirSync(dir, {recursive: true});
-        break;
-      default:
-        break;
-    }
-
-    // Write file exactly as processed (no extra comments)
-    this.fs.writeFileSync(targetPath, processedContent);
-
-    return {
-      originalPath: file.path,
-      processedPath: targetPath,
-      content: file.content!,
-      processedContent,
-    };
-  }
-
   private resolveTargetPath(
     filePath: string,
     options: RegistryProcessorOptions,
@@ -423,7 +380,7 @@ export class RegistryProcessor {
       [
         {directoryName: 'components', targetAlias: '@/components'},
         {directoryName: 'lib', targetAlias: '@/lib'},
-        {directoryName: 'utils', targetAlias: '@/lib'},
+        // {directoryName: 'utils', targetAlias: '@/lib'},
         {directoryName: 'blocks', targetAlias: '@/components/blocks'},
         {directoryName: 'hooks', targetAlias: '@/hooks'},
         {directoryName: 'ui', targetAlias: '@/components/ui'},
@@ -446,9 +403,6 @@ export class RegistryProcessor {
         switch (aliasKey) {
           case 'ui':
             directoryName = 'components'; // ui alias typically maps to components directory
-            break;
-          case 'utils':
-            directoryName = 'lib'; // utils alias typically maps to lib directory
             break;
           default:
             directoryName = aliasKey;
