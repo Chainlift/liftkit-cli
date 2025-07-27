@@ -10,9 +10,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configuration
-const TEST_COMPONENT = 'button';
+const TEST_COMPONENT = 'all';
 const SHADCN_VERSION = '2.7.0';
-const REGISTRY_URL = 'https://liftkit.pages.dev/r/button.json';
+const REGISTRY_URL = `https://liftkit.pages.dev/r/${TEST_COMPONENT}.json`;
 
 // Paths
 const TEST_OUTPUT_DIR = path.join(__dirname, '..', 'test_output');
