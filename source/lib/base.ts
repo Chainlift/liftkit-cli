@@ -109,8 +109,6 @@ export function catchError<T>(fn: () => T, context: string): T {
     if (err instanceof SyntaxError && typeof err.message === 'string') {
       if (err.message.includes('Unexpected') && /,\s*[\]}]/.test(err.message)) {
         console.error(`\n❌ ${context}\n\n  → ${err.message}\n`);
-      } else if (err.message.includes('Unexpected')) {
-        console.error(`\n❌ ${context}\n\n  → ${err.message}\n`);
       } else {
         console.error(`\n❌ ${context}\n\n  → ${err.message}\n`);
       }
