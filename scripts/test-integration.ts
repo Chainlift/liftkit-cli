@@ -166,7 +166,6 @@ function testLiftKit() {
       ...originalConfig,
       aliases: {
         components: '@/components',
-        utils: '@/lib/utils',
         ui: '@/components/ui',
         lib: '@/lib',
         hooks: '@/hooks',

@@ -3,10 +3,6 @@ import {initCommand} from './app.js';
 import * as base from './lib/base.js';
 
 // Type for mock fetch return value
-type MockFetchReturn = {
-  file: (path: string) => Promise<string>;
-};
-
 // Mock the base module
 vi.mock('./lib/base.js', () => ({
   question: vi.fn(),
@@ -37,8 +33,10 @@ describe('initCommand', () => {
     vi.mocked(base.fileExists).mockReturnValue(false);
     vi.mocked(base.getFilePath).mockImplementation(path => `/mock/${path}`);
     vi.mocked(base.fetch).mockResolvedValue({
+      getValidator: vi.fn().mockResolvedValue(vi.fn()),
+      json: vi.fn().mockResolvedValue({}),
       file: vi.fn().mockResolvedValue('File downloaded successfully'),
-    } as MockFetchReturn);
+    } satisfies ReturnType<typeof base.fetch>);
 
     // Call initCommand with --yes option
     await initCommand({yes: true});
@@ -52,8 +50,10 @@ describe('initCommand', () => {
     vi.mocked(base.fileExists).mockReturnValue(false);
     vi.mocked(base.getFilePath).mockImplementation(path => `/mock/${path}`);
     vi.mocked(base.fetch).mockResolvedValue({
+      getValidator: vi.fn().mockResolvedValue(vi.fn()),
+      json: vi.fn().mockResolvedValue({}),
       file: vi.fn().mockResolvedValue('File downloaded successfully'),
-    } as MockFetchReturn);
+    } satisfies ReturnType<typeof base.fetch>);
 
     // Mock user response
     vi.mocked(base.question).mockResolvedValue('y');
@@ -70,8 +70,10 @@ describe('initCommand', () => {
     vi.mocked(base.fileExists).mockReturnValue(false);
     vi.mocked(base.getFilePath).mockImplementation(path => `/mock/${path}`);
     vi.mocked(base.fetch).mockResolvedValue({
+      getValidator: vi.fn().mockResolvedValue(vi.fn()),
+      json: vi.fn().mockResolvedValue({}),
       file: vi.fn().mockResolvedValue('File downloaded successfully'),
-    } as MockFetchReturn);
+    } satisfies ReturnType<typeof base.fetch>);
 
     // Mock user response (empty string = just pressing enter)
     vi.mocked(base.question).mockResolvedValue('');
@@ -88,8 +90,10 @@ describe('initCommand', () => {
     vi.mocked(base.fileExists).mockReturnValue(false);
     vi.mocked(base.getFilePath).mockImplementation(path => `/mock/${path}`);
     vi.mocked(base.fetch).mockResolvedValue({
+      getValidator: vi.fn().mockResolvedValue(vi.fn()),
+      json: vi.fn().mockResolvedValue({}),
       file: vi.fn().mockResolvedValue('File downloaded successfully'),
-    } as MockFetchReturn);
+    } satisfies ReturnType<typeof base.fetch>);
 
     // Mock user response
     vi.mocked(base.question).mockResolvedValue('n');
