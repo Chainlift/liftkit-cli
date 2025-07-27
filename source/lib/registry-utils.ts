@@ -1,66 +1,26 @@
-// Registry utility functions
+// Registry utility functions - simplified for createSchemaProcessor usage
 
 import type {
   RegistryItem,
   RegistrySchema,
-  SchemaProperty,
   RegistryType,
+  SchemaProperty,
 } from './registry-types.js';
 
-// Remove typedEntries and typedKeys helpers
-
-export function pipe<T, R>(
-  ...fns: Array<(value: T) => T | R>
-): (value: T) => R {
-  return (value: T): R =>
-    fns.reduce(
-      (acc: T | R, fn: (value: T) => T | R) => fn(acc as T),
-      value,
-    ) as R;
-}
-
-export function curry<T extends unknown[], R>(
-  fn: (...args: T) => R,
-): (...args: T) => R | ((...args: unknown[]) => unknown) {
-  return function curried(...args: T): R | ((...args: unknown[]) => unknown) {
-    if (args.length >= fn.length) {
-      return fn(...args);
-    } else {
-      return (...next: unknown[]): unknown =>
-        curried(...([...args, ...next] as T));
-    }
-  };
-}
-
-// Refactor 'has' to avoid direct use of Object.prototype.hasOwnProperty from the target object
-export const has = <T extends object>(key: PropertyKey, obj: T): boolean =>
-  Object.prototype.hasOwnProperty.call(obj, key);
-
-export const isArray = (val: unknown): val is unknown[] => Array.isArray(val);
-
-export const isObject = (val: unknown): val is Record<string, unknown> =>
+// Core type guards
+const isArray = (val: unknown): val is unknown[] => Array.isArray(val);
+const isObject = (val: unknown): val is Record<string, unknown> =>
   val !== null && typeof val === 'object' && !isArray(val);
+const isString = (val: unknown): val is string => typeof val === 'string';
 
-export const isString = (val: unknown): val is string =>
-  typeof val === 'string';
+// Schema analysis functions
+const extractPropertyNames = (schema: RegistrySchema): string[] =>
+  Object.keys(schema.properties);
 
-// --- Validation and planning functions ---
+const extractRequired = (schema: RegistrySchema): string[] =>
+  schema.required?.map((key: string) => key) || [];
 
-export const extractPropertyNames = (schema: RegistrySchema): string[] => {
-  return Object.keys(schema.properties) as Array<
-    keyof typeof schema.properties
-  > as string[];
-};
-
-export const extractRequired = (schema: RegistrySchema): string[] => {
-  if (schema.required) {
-    return schema.required.map((key: string) => key);
-  } else {
-    return [];
-  }
-};
-
-export const extractPropertyDetails = (
+const extractPropertyDetails = (
   schema: RegistrySchema,
 ): Array<{
   name: string;
@@ -70,9 +30,7 @@ export const extractPropertyDetails = (
   enum: string[] | null;
   items: SchemaProperty | null;
 }> => {
-  const keys = Object.keys(schema.properties) as Array<
-    keyof typeof schema.properties
-  >;
+  const keys = Object.keys(schema.properties);
   return keys.map(key => {
     const details = schema.properties[key];
     return {
@@ -86,7 +44,7 @@ export const extractPropertyDetails = (
   });
 };
 
-export const getSchemaInfo = (
+const getSchemaInfo = (
   schema: RegistrySchema,
 ): {
   schemaVersion: string;
@@ -109,25 +67,26 @@ export const getSchemaInfo = (
   propertyDetails: extractPropertyDetails(schema),
 });
 
-export const createFieldValidator = (
+// Field validation
+const createFieldValidator = (
   schema: RegistrySchema,
   fieldName: string,
   value: unknown,
 ): string[] => {
-  switch (true) {
-    case fieldName.startsWith('$'):
-      return [];
-    case ['$schema', '$id', '$ref', 'metadata', 'meta'].includes(fieldName):
-      return [];
-    default:
-      break; // intentional fallthrough
+  if (
+    fieldName.startsWith('$') ||
+    ['$schema', '$id', '$ref', 'metadata', 'meta'].includes(fieldName)
+  ) {
+    return [];
   }
-  const fieldSchema =
-    schema.properties[fieldName as keyof typeof schema.properties];
+
+  const fieldSchema = schema.properties[fieldName];
   if (!fieldSchema) {
     return [`Unknown field: ${fieldName}`];
   }
+
   const errors: string[] = [];
+
   switch (fieldSchema.type) {
     case 'string':
       if (!isString(value)) {
@@ -137,8 +96,7 @@ export const createFieldValidator = (
     case 'array':
       if (!isArray(value)) {
         errors.push(`Field '${fieldName}' must be an array`);
-      } else if (fieldSchema.items && fieldSchema.items.type === 'string') {
-        // Validate array items
+      } else if (fieldSchema.items?.type === 'string') {
         (value as unknown[]).forEach((item: unknown, index: number) => {
           if (!isString(item)) {
             errors.push(
@@ -153,18 +111,19 @@ export const createFieldValidator = (
         errors.push(`Field '${fieldName}' must be an object`);
       }
       break;
-    default:
-      break; // intentional fallthrough
   }
+
   if (fieldSchema.enum && !fieldSchema.enum.includes(value as string)) {
     errors.push(
       `Field '${fieldName}' must be one of: ${fieldSchema.enum.join(', ')}`,
     );
   }
+
   return errors;
 };
 
-export const validateRequiredFields = (
+// Item validation
+const validateRequiredFields = (
   schema: RegistrySchema,
   item: RegistryItem,
 ): string[] => {
@@ -180,15 +139,13 @@ export const validateRequiredFields = (
   return errors;
 };
 
-// Additional validation functions
-export const validateFieldTypes = (
+const validateFieldTypes = (
   schema: RegistrySchema,
   item: RegistryItem,
 ): string[] => {
   const errors: string[] = [];
   const schemaFields = extractPropertyNames(schema);
 
-  // Only validate fields that are defined in the schema
   for (const field of schemaFields) {
     if (field in item) {
       const fieldErrors = createFieldValidator(
@@ -196,36 +153,34 @@ export const validateFieldTypes = (
         field,
         item[field as keyof RegistryItem],
       );
-      if (Array.isArray(fieldErrors)) {
-        errors.push(...fieldErrors);
-      }
+      errors.push(...fieldErrors);
     }
   }
   return errors;
 };
 
-export const findUnknownFields = (
+const findUnknownFields = (
   schema: RegistrySchema,
   item: RegistryItem,
 ): string[] => {
   const validFields = extractPropertyNames(schema);
-  const keys = Object.keys(item) as Array<keyof RegistryItem>;
+  const keys = Object.keys(item);
   return keys
     .filter(key => {
-      const keyStr = String(key);
-      // Always allow 'name' and 'type' fields as they are required in RegistryItem
-      if (keyStr === 'name' || keyStr === 'type') {
-        return false;
-      }
-      return !validFields.includes(keyStr);
+      if (key === 'name' || key === 'type') return false;
+      return !validFields.includes(key);
     })
-    .map(key => `Unknown field: ${String(key)}`);
+    .map(key => `Unknown field: ${key}`);
 };
 
-export const validateRegistryItem = (
+const validateRegistryItem = (
   schema: RegistrySchema,
   item: RegistryItem,
-): {isValid: boolean; errors: string[]; warnings: string[]} => {
+): {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+} => {
   const requiredErrors = validateRequiredFields(schema, item);
   const typeErrors = validateFieldTypes(schema, item);
   const warnings = findUnknownFields(schema, item);
@@ -238,12 +193,22 @@ export const validateRegistryItem = (
   };
 };
 
-// Change planning functions
-export const findModifications = (
+// Change planning
+const findModifications = (
   current: Record<string, unknown>,
   desired: Record<string, unknown>,
-): Array<{field: string; from: unknown; to: unknown; type: 'modification'}> => {
-  const changes = [];
+): Array<{
+  field: string;
+  from: unknown;
+  to: unknown;
+  type: 'modification';
+}> => {
+  const changes: Array<{
+    field: string;
+    from: unknown;
+    to: unknown;
+    type: 'modification';
+  }> = [];
   for (const key in desired) {
     if (
       Object.prototype.hasOwnProperty.call(desired, key) &&
@@ -254,18 +219,26 @@ export const findModifications = (
         field: key,
         from: current[key],
         to: desired[key],
-        type: 'modification' as const,
+        type: 'modification',
       });
     }
   }
   return changes;
 };
 
-export const findAdditions = (
+const findAdditions = (
   current: Record<string, unknown>,
   desired: Record<string, unknown>,
-): Array<{field: string; value: unknown; type: 'addition'}> => {
-  const additions = [];
+): Array<{
+  field: string;
+  value: unknown;
+  type: 'addition';
+}> => {
+  const additions: Array<{
+    field: string;
+    value: unknown;
+    type: 'addition';
+  }> = [];
   for (const key in desired) {
     if (
       Object.prototype.hasOwnProperty.call(desired, key) &&
@@ -274,18 +247,26 @@ export const findAdditions = (
       additions.push({
         field: key,
         value: desired[key],
-        type: 'addition' as const,
+        type: 'addition',
       });
     }
   }
   return additions;
 };
 
-export const findRemovals = (
+const findRemovals = (
   current: Record<string, unknown>,
   desired: Record<string, unknown>,
-): Array<{field: string; value: unknown; type: 'removal'}> => {
-  const removals = [];
+): Array<{
+  field: string;
+  value: unknown;
+  type: 'removal';
+}> => {
+  const removals: Array<{
+    field: string;
+    value: unknown;
+    type: 'removal';
+  }> = [];
   for (const key in current) {
     if (
       Object.prototype.hasOwnProperty.call(current, key) &&
@@ -294,18 +275,18 @@ export const findRemovals = (
       removals.push({
         field: key,
         value: current[key],
-        type: 'removal' as const,
+        type: 'removal',
       });
     }
   }
   return removals;
 };
 
-export const applyChanges = (
+const applyChanges = (
   current: Record<string, unknown>,
   desired: Record<string, unknown>,
   removals: Array<{field: string}>,
-) => {
+): Record<string, unknown> => {
   const result = {...current, ...desired};
   for (const removal of removals) {
     delete result[removal.field];
@@ -313,7 +294,53 @@ export const applyChanges = (
   return result;
 };
 
-export const createChangePlan = (
+// Change summary formatting
+const formatChange = (change: {
+  field: string;
+  from: unknown;
+  to: unknown;
+}): string => `Modified ${change.field}: ${change.from} → ${change.to}`;
+
+const formatAddition = (addition: {field: string; value: unknown}): string =>
+  `Added ${addition.field}: ${addition.value}`;
+
+const formatRemoval = (removal: {field: string}): string =>
+  `Removed ${removal.field}`;
+
+const formatValidationIssue = (issue: {
+  type: string;
+  issues: string[];
+}): string => `${issue.type} validation issues: ${issue.issues.join(', ')}`;
+
+const generateChangeSummary = (plan: {
+  changes: Array<{field: string; from: unknown; to: unknown}>;
+  additions: Array<{field: string; value: unknown}>;
+  removals: Array<{field: string; value: unknown}>;
+  validationIssues: Array<{type: string; issues: string[]}>;
+}): string => {
+  const sections: string[] = [];
+
+  if (plan.changes.length > 0) {
+    sections.push(`modified: ${plan.changes.map(formatChange).join(', ')}`);
+  }
+  if (plan.additions.length > 0) {
+    sections.push(`added: ${plan.additions.map(formatAddition).join(', ')}`);
+  }
+  if (plan.removals.length > 0) {
+    sections.push(`removed: ${plan.removals.map(formatRemoval).join(', ')}`);
+  }
+  if (plan.validationIssues.length > 0) {
+    sections.push(
+      `Validation issues: ${plan.validationIssues
+        .map(formatValidationIssue)
+        .join(', ')}`,
+    );
+  }
+
+  return sections.join('\n');
+};
+
+const createChangePlan = (
   schema: RegistrySchema,
   current: RegistryItem,
   desired: RegistryItem,
@@ -336,17 +363,14 @@ export const createChangePlan = (
     removals,
   );
 
-  // Ensure the resulting item has the required name and type properties
   const validResultingItem: RegistryItem = {
-    name: (resultingItem['name'] as string) || (current.name as string),
-    type:
-      (resultingItem['type'] as RegistryType) || (current.type as RegistryType),
+    name: (resultingItem['name'] as string) || current.name,
+    type: (resultingItem['type'] as RegistryType) || current.type,
     ...resultingItem,
   };
 
   const validation = validateRegistryItem(schema, validResultingItem);
-
-  let validationIssues: {type: 'current' | 'result'; issues: string[]}[];
+  let validationIssues: Array<{type: 'result'; issues: string[]}>;
   if (validation.errors.length > 0) {
     validationIssues = [{type: 'result', issues: validation.errors}];
   } else {
@@ -368,147 +392,43 @@ export const createChangePlan = (
   };
 };
 
-// Formatting functions
-export const formatChange = (change: {
-  field: string;
-  from: unknown;
-  to: unknown;
-}): string => {
-  return `Modified ${change.field}: ${change.from} → ${change.to}`;
-};
-
-export const formatAddition = (addition: {
-  field: string;
-  value: unknown;
-}): string => {
-  return `Added ${addition.field}: ${addition.value}`;
-};
-
-export const formatRemoval = (removal: {field: string}): string => {
-  return `Removed ${removal.field}`;
-};
-
-export const formatValidationIssue = (issue: {
-  type: string;
-  issues: string[];
-}): string => {
-  return `${issue.type} validation issues: ${issue.issues.join(', ')}`;
-};
-
-export const generateChangeSummary = (plan: {
-  changes: Array<{field: string; from: unknown; to: unknown}>;
-  additions: Array<{field: string; value: unknown}>;
-  removals: Array<{field: string; value: unknown}>;
-  validationIssues: Array<{type: string; issues: string[]}>;
-}): string => {
-  const sections: string[] = [];
-
-  if (plan.changes.length > 0) {
-    sections.push(`modified: ${plan.changes.map(formatChange).join(', ')}`);
-  }
-
-  if (plan.additions.length > 0) {
-    sections.push(`added: ${plan.additions.map(formatAddition).join(', ')}`);
-  }
-
-  if (plan.removals.length > 0) {
-    sections.push(`removed: ${plan.removals.map(formatRemoval).join(', ')}`);
-  }
-
-  if (plan.validationIssues.length > 0) {
-    sections.push(
-      `Validation issues: ${plan.validationIssues
-        .map(formatValidationIssue)
-        .join(', ')}`,
-    );
-  }
-
-  return sections.join('\n');
-};
-
-// Utility functions
-export const getTypeDefaults = (type: string): Record<string, unknown> => {
+// Template generation
+const getTypeDefaults = (type: string): Record<string, unknown> => {
   const defaults: Record<string, Record<string, unknown>> = {
     'registry:component': {
       dependencies: [],
       files: [],
     },
   };
-
   return defaults[type] || {};
 };
 
-export const generateTemplate = (type: RegistryType) => {
-  return {
-    name: '',
-    type,
-    files: [],
-    ...getTypeDefaults(type),
-  };
-};
+const generateTemplate = (type: RegistryType): RegistryItem => ({
+  name: '',
+  type,
+  files: [],
+  ...getTypeDefaults(type),
+});
 
-export const getRegistryTypes = (schema: RegistrySchema): string[] => {
-  const typeProperty = schema.properties['type'];
-  return typeProperty?.enum || [];
-};
+// Schema type extraction
+const getRegistryTypes = (schema: RegistrySchema): string[] =>
+  schema.properties['type']?.enum || [];
 
-export const getFileTypes = (schema: RegistrySchema): string[] => {
-  const filesProperty = schema.properties['files'];
-  if (filesProperty?.items?.properties?.['type']?.enum) {
-    return filesProperty.items.properties['type'].enum;
-  }
-  return [];
-};
+const getFileTypes = (schema: RegistrySchema): string[] =>
+  schema.properties['files']?.items?.properties?.['type']?.enum || [];
 
-export const validateItems = (
-  schema: RegistrySchema,
-  items: RegistryItem[],
-): Array<{
-  item: RegistryItem;
-  validation: {isValid: boolean; errors: string[]; warnings: string[]};
-}> => {
-  return items.map(item => ({
-    item,
-    validation: validateRegistryItem(schema, item),
-  }));
-};
-
-export const planChangesForItems = (
-  schema: RegistrySchema,
-  changeMap: Record<string, Record<string, unknown>>,
-  items: RegistryItem[],
-): Array<{item: RegistryItem; plan: ReturnType<typeof createChangePlan>}> => {
-  return items.map(item => {
-    const name = item.name as string;
-    const desired = changeMap[name] || {};
-    return {
-      item,
-      plan: createChangePlan(schema, item, {...item, ...desired}),
-    };
-  });
-};
-
-export const createSchemaProcessor = (schema: RegistrySchema) => {
-  return {
-    validate: (item: RegistryItem) => validateRegistryItem(schema, item),
-    planChanges: (
-      currentItem: RegistryItem,
-      desiredChanges: Partial<RegistryItem>,
-    ) =>
-      createChangePlan(schema, currentItem, {
-        ...currentItem,
-        ...desiredChanges,
-      }),
-    generateTemplate: (type?: RegistryType) => {
-      if (type) {
-        return generateTemplate(type);
-      } else {
-        return generateTemplate('registry:component');
-      }
-    },
-    getSchemaInfo: () => getSchemaInfo(schema),
-    getInfo: () => getSchemaInfo(schema),
-    getTypes: () => getRegistryTypes(schema) as RegistryType[],
-    getFileTypes: () => getFileTypes(schema) as RegistryType[],
-  };
-};
+// Main export - the only function used externally
+export const createSchemaProcessor = (schema: RegistrySchema) => ({
+  validate: (item: RegistryItem) => validateRegistryItem(schema, item),
+  planChanges: (
+    currentItem: RegistryItem,
+    desiredChanges: Partial<RegistryItem>,
+  ) =>
+    createChangePlan(schema, currentItem, {...currentItem, ...desiredChanges}),
+  generateTemplate: (type?: RegistryType) =>
+    generateTemplate(type || 'registry:component'),
+  getSchemaInfo: () => getSchemaInfo(schema),
+  getInfo: () => getSchemaInfo(schema),
+  getTypes: () => getRegistryTypes(schema) as RegistryType[],
+  getFileTypes: () => getFileTypes(schema) as RegistryType[],
+});
