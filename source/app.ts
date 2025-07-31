@@ -151,25 +151,6 @@ export async function initCommand(options: {yes?: boolean} = {}) {
             '✓ "add" script already exists in package.json',
           );
         }
-        // Ensure shadcn@2.7.0 is installed as a devDependency
-        const hasShadcn =
-          pkg &&
-          pkg.devDependencies &&
-          pkg.devDependencies['shadcn'] === '2.7.0';
-        switch (!hasShadcn) {
-          case true:
-            console.log(
-              '\x1b[32m%s\x1b[0m',
-              '✓ No shadcn dependency needed - using our own registry system',
-            );
-            break;
-          default:
-            console.log(
-              '\x1b[33m%s\x1b[0m',
-              'Note: shadcn dependency found but not required for liftkit',
-            );
-            break;
-        }
         break;
       }
     }
