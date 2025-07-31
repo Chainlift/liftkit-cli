@@ -4,6 +4,43 @@ import jv from 'ajv';
 import {spawn} from 'child_process';
 import readline from 'readline';
 
+interface ComponentsJson {
+  $schema: string;
+  style: string;
+  rsc: boolean;
+  tsx: boolean;
+  aliases: Record<string, string>;
+  iconLibrary: string;
+}
+
+export function writeComponentsJson(filePath = './components.json'): void {
+  const config: ComponentsJson = {
+    $schema: 'https://ui.shadcn.com/schema.json',
+    style: 'new-york',
+    rsc: true,
+    tsx: true,
+    aliases: {
+      components: '@/components',
+      utils: '@/lib/utils',
+      ui: '@/components/ui',
+      lib: '@/lib',
+      hooks: '@/hooks',
+    },
+    iconLibrary: 'lucide',
+  };
+
+  const resolvedPath = path.resolve(filePath);
+  const jsonString = JSON.stringify(config, null, 2);
+
+  try {
+    fs.writeFileSync(resolvedPath, jsonString, {encoding: 'utf8'});
+  } catch (error) {
+    throw new Error(
+      `Failed to write components.json: ${(error as Error).message}`,
+    );
+  }
+}
+
 export const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
