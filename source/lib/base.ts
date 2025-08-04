@@ -5,7 +5,6 @@ import {spawn} from 'child_process';
 import readline from 'readline';
 
 interface ComponentsJson {
-  $schema: string;
   style: string;
   rsc: boolean;
   tsx: boolean;
@@ -15,7 +14,6 @@ interface ComponentsJson {
 
 export function writeComponentsJson(filePath = './components.json'): void {
   const config: ComponentsJson = {
-    $schema: 'https://ui.shadcn.com/schema.json',
     style: 'new-york',
     rsc: true,
     tsx: true,
