@@ -1,7 +1,7 @@
 {
   "name": "@chainlift/liftkit",
-  "version": "0.1.1",
-  "description": "A standalone CLI for installing liftkit components without shadcn dependency",
+  "version": "0.2.0",
+  "description": "A CLI for installing liftkit components ",
   "license": "Apache-2.0",
   "bin": {
     "liftkit": "dist/cli.cjs"
